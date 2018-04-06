@@ -36,6 +36,10 @@ class ActionEatFood(world : World) extends Action {
         case f =>
           val minDistanceFood = foods.
             filter(food => f.circle.canCover(food.circle, world)).
+            filter(food => food.circle.point.x >= f.circle.r &&
+              food.circle.point.y >= f.circle.r &&
+              food.circle.point.x <= world.config.width - f.circle.r &&
+              food.circle.point.y <= world.config.height - f.circle.r).
             map(t =>
               (
                 Fragment.positionTick(f, t.circle.point, world.config)._1,
@@ -75,9 +79,8 @@ class ActionEatFood(world : World) extends Action {
 
 
       if (food.isDefined && nearestFood != food) {
-        val restTick = toFoodTrack.get.endTick - (world.tick - findFoodTick)
 
-        if (restTick > toNearestTrack.endTick) {
+        if (toFoodTrack.get.getEndTick() > toNearestTrack.getEndTick()) {
           food = nearestFood
           toFoodTrack = Some(toNearestTrack)
           foodFindTick = world.tick

@@ -33,17 +33,12 @@ class ActionEscape(val playerId : String, world: World) extends Action {
         val isInterSect = Circle.isIntersectTracks(onDangerFragment.circle, escapeTrack._2, player.get.circle, catchTrack._2, ActionEscape.predatorDiameterFactor)
         (escapePoint, mapCenter.distance(escapePoint), catchTrack._1 - escapeTrack._1, isInterSect)
       }).
-        filter(t => t._1.x < world.config.width && t._1.x > 0 && t._1.y < world.config.height && t._1.y > 0 ).
-        filter(!_._4)
+        filter(t => t._1.x < world.config.width && t._1.x > 0 && t._1.y < world.config.height)
 
-      val maxCatchTick = escapeVariants.maxBy(_._3)._3
-
-      val goodEscapeVariants = escapeVariants.filter(t => t._3 >= maxCatchTick - (maxCatchTick * 0.1).floor.toInt)
-
-      if (goodEscapeVariants.size > 0) {
-        lastEscapeVariant = new Move(goodEscapeVariants.minBy(_._2)._1)
+      if (escapeVariants.filter(!_._4).size > 0) {
+        lastEscapeVariant = new Move(escapeVariants.filter(!_._4).maxBy(_._3)._1)
       } else {//damn no escape variants, try do something
-        lastEscapeVariant = new Split(Point.zero)
+        lastEscapeVariant = new Move(escapeVariants.maxBy(_._3)._1)
       }
 
       lastRunTick = world.tick

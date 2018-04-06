@@ -2,8 +2,8 @@ package com.agario.actions
 
 import com.agario.Config
 import com.agario.commands._
-import com.agario.models.{Fragment, Player, Response, World}
-import com.agario.utils.{Circle, Point}
+import com.agario.models.{Fragment, Response, World}
+import com.agario.utils.{Point}
 
 /**
   * @note action then navigation manager
@@ -47,8 +47,8 @@ class ActionManager(world: World) {
       return (command.point - fragment.get.circle.point) * 100
     }
 
-    if (command.isInstanceOf[Move] && command.track.endTick > world.tick) {
-      val step = command.track.getStep(world.tick)
+    if (command.isInstanceOf[Move] && command.track.getEndTick > world.tick) {
+      val step = command.track.getStep(world.tick + 1)
       (step.direction * 100 + fragment.get.circle.point)
     } else {
       if (Fragment.positionTick(fragment.get, command.point, world.config)._1 >
@@ -89,6 +89,6 @@ class ActionManager(world: World) {
       return actionEatFood
     }
 
-    return new ActionRandomMove(world)
+    return new ActionMove(world)
   }
 }

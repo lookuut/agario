@@ -10,12 +10,12 @@ class Track(startTick : Int) {
   var endTick = 0
 
   def addStep(tick : Int, step : Step): Unit = {
-    endTick = math.max(tick, endTick)
-    track += (tick -> step)
+    endTick = math.max(endTick, tick + startTick)
+    track += (startTick + tick -> step)
   }
 
   def getEndTick (): Int = {
-    endTick + startTick
+    endTick
   }
 
   def getStep(step : Int) : Step = {

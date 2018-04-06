@@ -1,9 +1,13 @@
 package com.agario.models
 
 import com.agario.Config
+import com.agario.navigation.Chart
 import com.agario.utils.Point
 
 class World(val config : Config) {
+
+  val chartWidth = (config.width / Chart.propose).floor.toInt
+  val chartHeight = (config.height / Chart.propose).floor.toInt
 
   val mapCenter = new Point(config.width / 2, config.height / 2)
   var tick = 0
@@ -14,6 +18,7 @@ class World(val config : Config) {
   var ejections = Array.empty[Ejection]
 
   var isWorldChanged = false
+  val chart = new Chart(this)
 
   def updateWorld (_fragments : Map[String, Fragment],
                    _viruses : Map[String , Virus],
@@ -49,8 +54,9 @@ class World(val config : Config) {
     foods = _foods
     ejections = _ejections
     players = _players
-
     tick = _tick
+
+    chart.updateChart(this)
   }
 
   def isWorldUpdated() : Boolean = {
