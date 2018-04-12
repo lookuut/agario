@@ -1,8 +1,8 @@
 package com.agario.commands
 
-import com.agario.models.Track
+import com.agario.navigation.Track
 import com.agario.utils.Point
 
-abstract class Command(val point : Point, val track : Track) {
-  def this(point : Point) = this(point, Track.empty())
+abstract class Command(val point : Point, val track : Option[Track]) {
+  def this(point : Point) = this(point, Some(Track.empty()))
 }

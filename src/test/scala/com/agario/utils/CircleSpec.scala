@@ -1,9 +1,9 @@
 package com.agario.utils
 
-import com.agario.TestWorld
-import com.agario.actions.ActionEscape
+import com.agario.BaseSpec
+import com.agario.models.Player
 
-object CircleSpec extends org.specs2.mutable.Specification {
+object CircleSpec extends BaseSpec {
   "Circle spec" should {
 
     "Circle cover test" in {
@@ -16,16 +16,16 @@ object CircleSpec extends org.specs2.mutable.Specification {
     }
 
     "Circle can cover test" in {
-      val world = new TestWorld()
-      new Circle(new Point(10, 10), 10).canCover(new Circle(new Point(10, 1), 1), world.getWorld()) mustEqual true
-      new Circle(new Point(10, 10), 10).canCover(new Circle(new Point(1, 10), 1), world.getWorld()) mustEqual true
-      new Circle(new Point(10, 10), 10).canCover(new Circle(new Point(10, 10), 1), world.getWorld()) mustEqual true
-      new Circle(new Point(10, 10), 10).canCover(new Circle(new Point(5, 5), 1), world.getWorld()) mustEqual true
+      val world = getWorld()
+      new Circle(new Point(10, 10), 10).canCover(new Circle(new Point(10, 1), 1), world) mustEqual true
+      new Circle(new Point(10, 10), 10).canCover(new Circle(new Point(1, 10), 1), world) mustEqual true
+      new Circle(new Point(10, 10), 10).canCover(new Circle(new Point(10, 10), 1), world) mustEqual true
+      new Circle(new Point(10, 10), 10).canCover(new Circle(new Point(5, 5), 1), world) mustEqual true
 
-      new Circle(new Point(10, 10), 10).canCover(new Circle(new Point(1,1), 1), world.getWorld()) mustEqual false
-      new Circle(new Point(100, 100), 10).canCover(new Circle(new Point(1, 1), 1), world.getWorld()) mustEqual false
-      new Circle(new Point(2, 2), 2).canCover(new Circle(new Point(1, 1), 1), world.getWorld()) mustEqual false
-      new Circle(new Point(3, 3), 3).canCover(new Circle(new Point(world.getWorld().config.width - 1,  world.getWorld().config.height - 1), 1), world.getWorld()) mustEqual false
+      new Circle(new Point(10, 10), 10).canCover(new Circle(new Point(1,1), 1), world) mustEqual false
+      new Circle(new Point(100, 100), 10).canCover(new Circle(new Point(1, 1), 1), world) mustEqual false
+      new Circle(new Point(2, 2), 2).canCover(new Circle(new Point(1, 1), 1), world) mustEqual false
+      new Circle(new Point(3, 3), 3).canCover(new Circle(new Point(world.config.width - 1,  world.config.height - 1), 1), world) mustEqual false
     }
 
     "Is track intersect1" in {
@@ -43,7 +43,7 @@ object CircleSpec extends org.specs2.mutable.Specification {
         3 -> new Point(3, 0)
       )
 
-      Circle.isIntersectTracks(new Circle(new Point(0, 0), 1), victimTrack, new Circle(new Point(3, 3), 1), predatorTrack, ActionEscape.predatorDiameterFactor) mustEqual true
+      Circle.isIntersectTracks(new Circle(new Point(0, 0), 1), victimTrack, new Circle(new Point(3, 3), 1), predatorTrack, Player.coverPart) mustEqual true
     }
 
     "Is track intersect2" in {

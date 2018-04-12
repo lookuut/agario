@@ -2,12 +2,18 @@ package com.agario.utils
 
 class Point(val x: Double, val y : Double) {
 
+  def cut(min : Point, max : Point): Point =  {
+
+    new Point(math.min(max.x, math.max(min.x, x)), math.min(max.y, math.max(min.y, y)))
+  }
+
+  def toInt() = new Point(x.floor.toInt, y.floor.toInt)
 
   def squareDistance(that : Point) = (that.x - x) * (that.x - x) + (that.y - y) * (that.y - y)
 
   def distance(that: Point) = math.sqrt(squareDistance(that))
 
-  def normalize() = if (length() == 0) Point.zeroPoint else new Point(x / length, y / length)
+  def normalize() = if (length() == 0) Point.zero else new Point(x / length, y / length)
 
   def length() = Math.sqrt(x * x + y * y)
 
@@ -51,9 +57,16 @@ class Point(val x: Double, val y : Double) {
 
   def cross(p : Point): Double = x * p.y - y * p.x
 
-  def turn (angle : Double) : Point = {
-    new Point (x * math.cos(angle) - y * math.sin(angle), x * math.sin(angle) + y * math.cos(angle))
+
+  /**
+    * Turn vector , way == 1 is against clock way
+    * @param angle
+    * @return
+    */
+  def turn (angle : Double, way : Int = 1) : Point = {
+    new Point (x * math.cos(angle) - way * y * math.sin(angle), way * x * math.sin(angle) + y * math.cos(angle))
   }
+
   def - (that: Point) = new Point(x - that.x, y - that.y)
   def + (that: Point) = new Point(x + that.x, y + that.y)
   def * (f : Double) = new Point(x * f, y * f)
@@ -79,12 +92,8 @@ class Point(val x: Double, val y : Double) {
 }
 
 
-object Point {
-  private val zeroPoint = new Point(0,0)
-
-  def zero(): Point = {
-    zeroPoint
-  }
+object  Point {
+  val zero = new Point(0,0)
 
   def line(p1 : Point, p2 : Point): Line = {
     val a = (p2.y - p1.y) / (p2.x - p1.x)

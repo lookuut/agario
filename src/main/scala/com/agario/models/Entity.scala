@@ -17,31 +17,64 @@ class Entity(val id : Option[String],
              val ttf : Option[Int]
             ) {
   val point = new Point(x, y)
-  val speed = if (sx.isDefined) Some(new Point(sx.get, sy.get)) else None
+  val speed = if (sx.isDefined) new Point(sx.get, sy.get) else Point.zero
 
   override def toString() = f"""$id $point $objectType $weight $r $speed $ttf"""
 
+  def getId (): String = {
+    BaseEntity.getEntityId(this)
+  }
+
   def fragment(world: World) : Fragment = {
-    new Fragment(id.get, new Circle(new Point(x, y), Fragment.radiusByWeight(weight.get)), weight.get, speed.get, ttf)
+    new Fragment(world, id.get, new Circle(point, r.get), weight.get, speed, ttf.getOrElse(0))//@todo, what should we do with radius
   }
 
   def virus(world: World) : Virus = {
-    new Virus(id.get, new Circle(new Point(x, y), world.config.virusRadius), weight.get)
+    new Virus(world, id.get, new Circle(point, world.config.virusRadius), Point.zero, weight.get)
   }
 
   def food(world: World) : Food = {
-    new Food(new Circle(new Point(x, y), Config.foodRadius), world.config.foodWeight)
+    new Food(world, point.toString, new Circle(point, Food.radius), Point.zero, world.config.foodWeight)
   }
 
-  def player(playerLastPos : Option[Point]) : Player = {
-    val pos = new Point(x, y)
-    val speed = Player.speedByLastPos(pos, playerLastPos.getOrElse(pos))
+  def player(world: World) : Player = {
+    val lastState = world.entityPrevStates.get(getId())
+    val lastPos = if (lastState.isEmpty) point else lastState.get.posCircle.point
+    val speed = Player.speedByLastPos(point, lastPos)
 
-    new Player(id.get, new Circle(new Point(x, y), r.get), weight.get, speed)
+    new Player(world, id.get, new Circle(point, r.get), speed, weight.get)
   }
 
-  def ejection() : Ejection = {
-    new Ejection(pId.get, new Point(x, y))
+  def ejection(world: World) : Ejection = {
+    val lastState = world.entityPrevStates.get(getId())
+    val lastPos = if (lastState.isEmpty) point else lastState.get.posCircle.point
+    val speed = Player.speedByLastPos(point, lastPos)
+
+    new Ejection(world, id.get, new Circle(point, Ejection.radius), speed, Ejection.weight, pId.get)
+  }
+
+  def getEntity(world: World): BaseEntity = {
+    if (objectType.isEmpty) {
+      fragment(world)
+    } else if (objectType.get == BaseEntity.player) {
+      player(world)
+    } else if (objectType.get == BaseEntity.food) {
+      food(world)
+    } else if (objectType.get == BaseEntity.ejection) {
+      ejection(world)
+    } else if (objectType.get == BaseEntity.virus) {
+      virus(world)
+    } else {
+      throw new Exception("Unknown type " + objectType.get)
+    }
+  }
+
+  def isStatic(): Boolean = {
+    if (objectType.isDefined && (objectType.get == "F" || objectType.get == "V")) {
+      true
+    } else {
+      false
+    }
   }
 }
 

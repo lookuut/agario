@@ -18,15 +18,15 @@ class ActionCatch (playerId : String, world : World) extends Action{
       values.
       filter {
         case f =>
-          val victimVec = (player.get.circle.point - f.circle.point).normalize()
-          f.weight / player.get.weight > 2 * ActionEscape.predatorFactor &&
+          val victimVec = (player.get.posCircle.point - f.posCircle.point).normalize()
+          f.weight / player.get.weight > 2 * Player.predatorFactor &&
           f.speed.angle(victimVec) <= math.Pi / 12
       }.size > 0
 
     if (split) {
-      new Split(player.get.circle.point)
+      new Split(player.get.posCircle.point)
     } else {
-      new Move(player.get.circle.point)
+      new Move(player.get.posCircle.point)
     }
   }
 
@@ -38,15 +38,15 @@ class ActionCatch (playerId : String, world : World) extends Action{
       return true
     }
 
-    val predators = world.fragments.values.filter(f => f.weight / ActionEscape.predatorFactor > player.get.weight)
+    val predators = world.fragments.values.filter(f => f.weight / Player.predatorFactor > player.get.weight)
 
     predators.map{//@TODO use viruses
       case p =>
         (
-          (if (p.circle.point.distance(world.mapCenter) > player.get.circle.point.distance(world.mapCenter)) 0 else 1),
+          (if (p.posCircle.point.distance(world.mapCenter) > player.get.posCircle.point.distance(world.mapCenter)) 0 else 1),
           p.weight / player.get.weight
         )
-    }.filter(t => t._1 == 1 || t._2 >  2 * ActionEscape.predatorFactor).size == 0
+    }.filter(t => t._1 == 1 || t._2 >  2 * Player.predatorFactor).size == 0
   }
 }
 
@@ -54,17 +54,16 @@ object ActionCatch {
 
   def searchVictims (world : World) : Option[Player] = {
     val victims = world.
-      players.
-      values.
+      getPlayers().
       map{case (p) =>
         val ticks = world.
           fragments.
           values.
-          filter(f => f.weight / p.weight > ActionEscape.predatorFactor).
+          filter(f => f.weight / p.weight > Player.predatorFactor).
           map{
             case (f) =>
-              val victimVec = (p.circle.point - f.circle.point).normalize()
-              (Fragment.positionTick(f, p.circle.point,world.config)._1, f.speed.angle(victimVec))//@TODO doit better with angle speed, weight
+              val victimVec = (p.posCircle.point - f.posCircle.point).normalize()
+              (Fragment.positionTick(f, p.posCircle.point,world.config)._1, f.speed.angle(victimVec))//@TODO doit better with angle speed, weight
           }
         (if (ticks.size > 0) ticks.minBy(_._1)._1 else 0, p)
       }.

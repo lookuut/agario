@@ -4,6 +4,7 @@ import java.net.{InetAddress, Socket}
 import java.io._
 
 import com.agario.models._
+import com.agario.utils.Profiler
 import com.rojoma.json.v3.util.JsonUtil
 
 import scala.collection.Iterator
@@ -24,25 +25,42 @@ object Main {
 
 		logger.info(s"Get config file " + configStr)
 
-		for(tick <- 0 to config.right.get.ticks) {
-			val line = input()
-			logger.info(s"Get line " + line)
+		try {
+			for(tick <- 0 to config.right.get.ticks) {
 
-			val parsed = JsonUtil.parseJson[Map[String, Array[Entity]]](line)
+				val line = input()
+				logger.info(s"Get line " + line)
 
-			val fragments = parsed.right.get("Mine")
-			val entities = parsed.right.get("Objects")
+				val parsed = JsonUtil.parseJson[Map[String, Array[Entity]]](line)
 
-			val response = strategy.tick(
-				fragments,
-				entities,
-				tick
-			)
-			
-			val jsonReponse = JsonUtil.renderJson(response) 
+				val fragments = parsed.right.get("Mine")
+				val entities = parsed.right.get("Objects")
 
-			logger.info(jsonReponse)
-			output(jsonReponse)
+				var response = new Response(0, 0, false, false)
+
+				val mills = Profiler.profile{
+					response = strategy.tick(
+						fragments,
+						entities ++ fragments,
+						tick
+					)
+				}
+
+				val jsonResponse = JsonUtil.renderJson(new Response(response, f"Run time $mills ms"))
+				logger.info(jsonResponse)
+				output(jsonResponse)
+			}
+
+		} catch {
+			case e: NumberFormatException =>
+
+			/*case e: Exception => {
+				println(e.getStackTrace.toString)
+				val response = new Response(0,0, false, false, e.getStackTrace.mkString("\n"))
+				val jsonResponse = JsonUtil.renderJson(response)
+				logger.info(jsonResponse)
+				output(jsonResponse)
+			}*/
 		}
 	}
 

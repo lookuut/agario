@@ -18,6 +18,8 @@ class Cell(val world : World) {
       arrayBuffer += entity
       history.put(tick, arrayBuffer)
     }
+
+    clear()
   }
 
   def getMaxTick(): Int = {
@@ -25,7 +27,7 @@ class Cell(val world : World) {
   }
 
   def clear(): Unit = {
-    history --= history.keys.filter{tick => tick > world.tick - Cell.minTickCellHistory}
+    history --= history.keys.filter{tick => tick < world.tick - Cell.minTickCellHistory}
   }
 }
 

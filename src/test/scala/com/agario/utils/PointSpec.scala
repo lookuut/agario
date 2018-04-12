@@ -1,19 +1,18 @@
 package com.agario.utils
 
-object PointSpec extends org.specs2.mutable.Specification {
+import com.agario.BaseSpec
+
+object PointSpec extends BaseSpec {
   "Point test" should {
 
     "Point angle test" in {
 
-      var p1 = new Point(1, 3)
-      var p2 = new Point(3, 1)
-
+      var p1 = new Point(1, 1)
+      var p2 = new Point(1, 0)
 
       println("=======" + p1.angleAgainstClockWay(p2))
       println("=======" + p2.angleAgainstClockWay(p1))
-
-
-      new Point(1, 0).angle(new Point(1,0)) <= 0.1
+      true
     }
 
     "Mirror vector" in {

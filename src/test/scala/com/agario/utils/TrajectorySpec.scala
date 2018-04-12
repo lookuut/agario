@@ -1,22 +1,26 @@
 package com.agario.utils
 
-import com.agario.TestWorld
+import com.agario.BaseSpec
 import com.agario.models.Fragment
+import com.agario.utils.CircleSpec.getWorld
 
-class TrajectorySpec extends org.specs2.mutable.Specification {
-
-  val world = new TestWorld().getWorld()
-
-  val weight = 40
-  val radius = 10
-  val maxSpeed = world.config.speedFactor / math.sqrt(weight)
-
-  val fragment = new Fragment("1", new Circle(new Point(0, 0), radius), weight, new Point(maxSpeed, 0), None)
+class TrajectorySpec extends BaseSpec {
   val coverPart = 2.0f / 3
   "Trajectory" should {
 
-    "Trajectory test 1" in {
+    "Trajectory test 0" in {
+      val fragment = getFragment(new Point(200.63489713918028, 222.33456082826868), new Point(1.0760983375945607, 2.120892519030835), 42)
+      val world = getWorld()
+      val target = new Circle(new Point(247.0, 263.0), 2.5)
+      var optimalTrack = Trajectory.searchTrack(world, fragment, target, coverPart)
+      val simpleTrack = new Trajectory(world , fragment, target, coverPart).straight()
 
+      optimalTrack.endTick <= simpleTrack.endTick mustEqual true
+    }
+
+    "Trajectory test 1" in {
+      val fragment = getFragment(new Point(0, 0), new Point(3, 0), fragmentWeight)
+      val world = getWorld()
       val target = new Circle(new Point(100, 100), 2.5)
       var optimalTrack = Trajectory.searchTrack(world, fragment, target, coverPart)
       val simpleTrack = new Trajectory(world , fragment, target, coverPart).straight()
@@ -25,6 +29,8 @@ class TrajectorySpec extends org.specs2.mutable.Specification {
     }
 
     "Trajectory test 2" in {
+      val world = getWorld()
+      val fragment = getFragment(new Point(0, 0), new Point(3, 0), fragmentWeight)
       val target = new Circle(new Point(100, 0), 2.5)
       var optimalTrack = Trajectory.searchTrack(world, fragment, target, coverPart)
       val simpleTrack = new Trajectory(world , fragment, target, coverPart).straight()
@@ -33,7 +39,9 @@ class TrajectorySpec extends org.specs2.mutable.Specification {
     }
 
     "Trajectory test 3" in {
+      val world = getWorld()
       val target = new Circle(new Point(0, 100), 2.5)
+      val fragment = getFragment(new Point(0, 0), new Point(3, 0), fragmentWeight)
       var optimalTrack = Trajectory.searchTrack(world, fragment, target, coverPart)
       val simpleTrack = new Trajectory(world , fragment, target, coverPart).straight()
 
@@ -41,7 +49,9 @@ class TrajectorySpec extends org.specs2.mutable.Specification {
     }
 
     "Trajectory test 4" in {
-      val target = new Circle(new Point(-100, 100), 2.5)
+      val world = getWorld()
+      val target = new Circle(new Point(200, 100), 2.5)
+      val fragment = getFragment(new Point(0, 0), new Point(3, 0), fragmentWeight)
       var optimalTrack = Trajectory.searchTrack(world, fragment, target, coverPart)
       val simpleTrack = new Trajectory(world , fragment, target, coverPart).straight()
 
@@ -49,7 +59,9 @@ class TrajectorySpec extends org.specs2.mutable.Specification {
     }
 
     "Trajectory test 5" in {
+      val world = getWorld()
       val target = new Circle(new Point(100, 300), 2.5)
+      val fragment = getFragment(new Point(0, 0), new Point(3, 0), fragmentWeight)
       var optimalTrack = Trajectory.searchTrack(world, fragment, target, coverPart)
       val simpleTrack = new Trajectory(world , fragment, target, coverPart).straight()
 
@@ -57,7 +69,9 @@ class TrajectorySpec extends org.specs2.mutable.Specification {
     }
 
     "Trajectory test 6" in {
+      val world = getWorld()
       val target = new Circle(new Point(200, 200), 2.5)
+      val fragment = getFragment(new Point(0, 0), new Point(3, 0), fragmentWeight)
       var optimalTrack = Trajectory.searchTrack(world, fragment, target, coverPart)
       val simpleTrack = new Trajectory(world , fragment, target, coverPart).straight()
 
@@ -65,6 +79,8 @@ class TrajectorySpec extends org.specs2.mutable.Specification {
     }
 
     "Trajectory test 7" in {
+      val world = getWorld()
+      val fragment = getFragment(new Point(0, 0), new Point(3, 0), fragmentWeight)
       val target = new Circle(new Point(1000, 0), 2.5)
       var optimalTrack = Trajectory.searchTrack(world, fragment, target, coverPart)
       val simpleTrack = new Trajectory(world , fragment, target, coverPart).straight()
@@ -73,6 +89,8 @@ class TrajectorySpec extends org.specs2.mutable.Specification {
     }
 
     "Trajectory test 8" in {
+      val world = getWorld()
+      val fragment = getFragment(new Point(0, 0), new Point(3, 0), fragmentWeight)
       val target = new Circle(new Point(0, 0), 2.5)
       var optimalTrack = Trajectory.searchTrack(world, fragment, target, coverPart)
       val simpleTrack = new Trajectory(world , fragment, target, coverPart).straight()

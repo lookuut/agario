@@ -5,6 +5,14 @@ import com.agario.models.{Player, World}
 
 class Circle(val point : Point, val r : Double) {
 
+  def square (): Double = {
+    math.Pi * r * r
+  }
+
+  def isCoverPoint(p : Point): Boolean = {
+    p.distance(point) <= r
+  }
+
   def isCover(circle : Circle, coverPart : Double = 1.0f): Boolean = {
     if (circle.r > r) {
       return false

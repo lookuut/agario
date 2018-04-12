@@ -35,7 +35,6 @@ object Config {
       "SPEED_FACTOR", _.speedFactor
     )
 
-  val foodRadius = 2.5f
   val minWeightToBurst = 120
   val minTicksToVirus = 100
 }
