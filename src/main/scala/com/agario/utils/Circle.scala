@@ -14,28 +14,22 @@ class Circle(val point : Point, val r : Double) {
   }
 
   def isCover(circle : Circle, coverPart : Double = 1.0f): Boolean = {
-    if (circle.r > r) {
-      return false
-    }
-
-    val f = r + circle.r * 2 * ( 1.0f / 2 - coverPart)
-
-    circle.point.distance(point) < f
+    return Circle.isCover(point, r, circle.point, circle.r, coverPart)
   }
 
-  def canCover(circle: Circle, world: World): Boolean = {
+  def canCover(circle: Circle): Boolean = {
     if (circle.r > r) {
       return false
     }
 
     if (circle.point.x < r && circle.point.y < r) {
       return circle.point.distance(new Point(r, r)) < r - circle.r
-    } else if (circle.point.x < r && circle.point.y > world.config.height - r) {
-      return circle.point.distance(new Point(r, world.config.height - r)) < r - circle.r
-    } else if (circle.point.x > world.config.width - r && circle.point.y < r) {
-      return circle.point.distance(new Point(world.config.width - r, r)) < r - circle.r
-    } else if (circle.point.x > world.config.width - r && circle.point.y > world.config.height - r) {
-      return circle.point.distance(new Point(world.config.width - r, world.config.height - r)) < r - circle.r
+    } else if (circle.point.x < r && circle.point.y > World.config.height - r) {
+      return circle.point.distance(new Point(r, World.config.height - r)) < r - circle.r
+    } else if (circle.point.x > World.config.width - r && circle.point.y < r) {
+      return circle.point.distance(new Point(World.config.width - r, r)) < r - circle.r
+    } else if (circle.point.x > World.config.width - r && circle.point.y > World.config.height - r) {
+      return circle.point.distance(new Point(World.config.width - r, World.config.height - r)) < r - circle.r
     }
 
     return true
@@ -61,23 +55,44 @@ class Circle(val point : Point, val r : Double) {
 
 object Circle {
 
-  def edges (world: World, r : Double) : Array[Circle] = {
+  def isHeatBorder (point : Point, r : Double): Boolean = {
+    if (
+      point.x + r >= World.config.width || point.y + r >= World.config.height
+        ||
+      point.x <= r || point.y <= r
+    ) {
+      true
+    } else {
+      false
+    }
+
+  }
+
+  def isCover(posPredator : Point, rPredator : Double, posVictim : Point, rVictim : Double, coverPart: Double) : Boolean = {
+    if (rPredator < rVictim) {
+      return false
+    }
+
+    val f = rVictim + ( rPredator - rPredator * 2 * coverPart)
+
+    posVictim.squareDistance(posPredator) < f * f
+  }
+
+  def edges (r : Double) : Array[Circle] = {
     Array(
       new Circle(new Point(r, r), r),
-      new Circle(new Point(world.config.width - r, r), r),
-      new Circle(new Point(r, world.config.height - r), r),
-      new Circle(new Point(world.config.width - r, world.config.width - r), r)
+      new Circle(new Point(World.config.width - r, r), r),
+      new Circle(new Point(r, World.config.height - r), r),
+      new Circle(new Point(World.config.width - r, World.config.width - r), r)
     )
   }
 
-  def zero(): Circle = {
-    new Circle(Point.zero(), 0)
-  }
+  val zero = new Circle(Point.zero, 0)
 
   def isIntersectTracks(victim : Circle, victimTrack : Map[Int, Point], predator : Circle, predatorTrack : Map[Int, Point], diameterPart : Double) : Boolean = {
     victimTrack.filter{
       case(tick , victimPoint) =>
-        val predatorPoint = predatorTrack.getOrElse(tick, Point.zero())
+        val predatorPoint = predatorTrack.getOrElse(tick, Point.zero)
         val f = predator.r + victim.r * 2 * ( 1.0f / 2 - diameterPart)
         val distance = predatorPoint.distance(victimPoint)
         distance < f

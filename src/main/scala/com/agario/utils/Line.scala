@@ -33,6 +33,31 @@ class Line(val xc : Double, val yc : Double, val c : Double) {
 
 object Line {
 
+  def pointCrossWithBorder(point : Point, direction : Point, width : Double, height : Double) : Point = {
+    val endPoint = point + direction * width * 2
+    val (line1, line2, line3, line4) =
+    if (direction.x > 0 && direction.y > 0) {
+      (new Point(0, height), new Point(width, height) ,new Point(width, 0), new Point(width, height))
+    } else if (direction.x <= 0 && direction.y > 0) {
+      (new Point(0, 0), new Point(0, height) ,new Point(0, height), new Point(width, height))
+    } else if (direction.x > 0 && direction.y <= 0) {
+      (new Point(0, 0), new Point(width, 0) ,new Point(width, 0), new Point(width, height))
+    } else if (direction.x <= 0 && direction.y <= 0) {
+      (new Point(0, 0), new Point(width, 0) ,new Point(0, 0), new Point(0, height))
+    } else {
+      throw new Exception("Something goes wrong with point cross border")
+    }
+
+    val res1 = Line.intersect(point, endPoint, line1, line2)
+    val res2 = Line.intersect(point, endPoint, line3, line4)
+
+    if (res1.isDefined) {
+      res1.get
+    } else {
+      res2.get
+    }
+  }
+
   def tangentCircle(tangentPoint1: Point, tangent1 : Point,tangentPoint2: Point, tangent2 : Point) : Option[Circle] = {
     val angle = (math.Pi - tangent1.angle(tangent2)) / 2
     val line1 = twoPoint(tangentPoint1, tangentPoint1 + tangent1)

@@ -1,101 +1,61 @@
 package com.agario.utils
 
-import com.agario.BaseSpec
-import com.agario.models.Fragment
-import com.agario.utils.CircleSpec.getWorld
+import com.agario.{BaseSpec, Strategy, world}
+import com.agario.models.{BaseEntity}
 
 class TrajectorySpec extends BaseSpec {
+  sequential
+
   val coverPart = 2.0f / 3
+
   "Trajectory" should {
 
-    "Trajectory test 0" in {
-      val fragment = getFragment(new Point(200.63489713918028, 222.33456082826868), new Point(1.0760983375945607, 2.120892519030835), 42)
-      val world = getWorld()
-      val target = new Circle(new Point(247.0, 263.0), 2.5)
-      var optimalTrack = Trajectory.searchTrack(world, fragment, target, coverPart)
-      val simpleTrack = new Trajectory(world , fragment, target, coverPart).straight()
 
-      optimalTrack.endTick <= simpleTrack.endTick mustEqual true
+    "Speed Test" in new world {
+
+      val weight = 40.0
+
+      val maxSpeed = BaseEntity.maxSpeed(weight)
+      val inertia = BaseEntity.inertion(weight)
+      val sSpeed = new Point(1, 0)
+
+      val pos = new Point(100, 100)
+      val targetPos = new Point(160, 100)
+      val direction = (targetPos - pos).normalize()
+
+      var speed = sSpeed
+      for (i <- 1 to 100) {
+
+        speed = Trajectory.tickSpeed(direction, speed, maxSpeed, inertia)
+        val speed1 = Trajectory.speed(sSpeed, direction, maxSpeed, inertia, i)
+        println(f"$speed $speed1")
+      }
+
+      1 > 2 mustEqual false
     }
 
-    "Trajectory test 1" in {
-      val fragment = getFragment(new Point(0, 0), new Point(3, 0), fragmentWeight)
-      val world = getWorld()
-      val target = new Circle(new Point(100, 100), 2.5)
-      var optimalTrack = Trajectory.searchTrack(world, fragment, target, coverPart)
-      val simpleTrack = new Trajectory(world , fragment, target, coverPart).straight()
 
-      optimalTrack.endTick <= simpleTrack.endTick mustEqual true
-    }
+    "Prediction test position and speed test" in new world {
 
-    "Trajectory test 2" in {
-      val world = getWorld()
-      val fragment = getFragment(new Point(0, 0), new Point(3, 0), fragmentWeight)
-      val target = new Circle(new Point(100, 0), 2.5)
-      var optimalTrack = Trajectory.searchTrack(world, fragment, target, coverPart)
-      val simpleTrack = new Trajectory(world , fragment, target, coverPart).straight()
+      val weight = 40.0
+      val direction = new Point(-1, 0)
+      val startSpeed = new Point(-2, 1)
+      var speed = startSpeed
+      val maxSpeed = BaseEntity.maxSpeed(weight)
+      val inertia = BaseEntity.inertion(weight)
+      val maxTick = 49
+      var pos = Point.zero
 
-      optimalTrack.endTick <= simpleTrack.endTick mustEqual true
-    }
+      var res = true
+      for (tick <- 0 to maxTick) {
+        speed = Trajectory.tickSpeed(direction, speed, maxSpeed, inertia)
+        pos += speed
+        val predictedPos = Strategy.getPosAtTick(weight, tick + 1, startSpeed, direction)
+        println(predictedPos + " " + pos + "=" + pos.distance(predictedPos.get))
+        res = res && pos.distance(predictedPos.get) <= 0.00001
+      }
 
-    "Trajectory test 3" in {
-      val world = getWorld()
-      val target = new Circle(new Point(0, 100), 2.5)
-      val fragment = getFragment(new Point(0, 0), new Point(3, 0), fragmentWeight)
-      var optimalTrack = Trajectory.searchTrack(world, fragment, target, coverPart)
-      val simpleTrack = new Trajectory(world , fragment, target, coverPart).straight()
-
-      optimalTrack.endTick <= simpleTrack.endTick mustEqual true
-    }
-
-    "Trajectory test 4" in {
-      val world = getWorld()
-      val target = new Circle(new Point(200, 100), 2.5)
-      val fragment = getFragment(new Point(0, 0), new Point(3, 0), fragmentWeight)
-      var optimalTrack = Trajectory.searchTrack(world, fragment, target, coverPart)
-      val simpleTrack = new Trajectory(world , fragment, target, coverPart).straight()
-
-      optimalTrack.endTick <= simpleTrack.endTick mustEqual true
-    }
-
-    "Trajectory test 5" in {
-      val world = getWorld()
-      val target = new Circle(new Point(100, 300), 2.5)
-      val fragment = getFragment(new Point(0, 0), new Point(3, 0), fragmentWeight)
-      var optimalTrack = Trajectory.searchTrack(world, fragment, target, coverPart)
-      val simpleTrack = new Trajectory(world , fragment, target, coverPart).straight()
-
-      optimalTrack.endTick <= simpleTrack.endTick mustEqual true
-    }
-
-    "Trajectory test 6" in {
-      val world = getWorld()
-      val target = new Circle(new Point(200, 200), 2.5)
-      val fragment = getFragment(new Point(0, 0), new Point(3, 0), fragmentWeight)
-      var optimalTrack = Trajectory.searchTrack(world, fragment, target, coverPart)
-      val simpleTrack = new Trajectory(world , fragment, target, coverPart).straight()
-
-      optimalTrack.endTick <= simpleTrack.endTick mustEqual true
-    }
-
-    "Trajectory test 7" in {
-      val world = getWorld()
-      val fragment = getFragment(new Point(0, 0), new Point(3, 0), fragmentWeight)
-      val target = new Circle(new Point(1000, 0), 2.5)
-      var optimalTrack = Trajectory.searchTrack(world, fragment, target, coverPart)
-      val simpleTrack = new Trajectory(world , fragment, target, coverPart).straight()
-
-      optimalTrack.endTick <= simpleTrack.endTick mustEqual true
-    }
-
-    "Trajectory test 8" in {
-      val world = getWorld()
-      val fragment = getFragment(new Point(0, 0), new Point(3, 0), fragmentWeight)
-      val target = new Circle(new Point(0, 0), 2.5)
-      var optimalTrack = Trajectory.searchTrack(world, fragment, target, coverPart)
-      val simpleTrack = new Trajectory(world , fragment, target, coverPart).straight()
-
-      optimalTrack.endTick <= simpleTrack.endTick mustEqual true
+      res mustEqual true
     }
   }
 }

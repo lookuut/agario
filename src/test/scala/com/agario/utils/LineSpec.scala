@@ -1,11 +1,20 @@
 package com.agario.utils
 
 import com.agario.BaseSpec
+import com.agario.models.World
 
 
 class LineSpec extends BaseSpec {
 
   "Line test" should {
+    "Cross with border" in {
+      Line.pointCrossWithBorder(new Point(1, 1), new Point(2, 0), World.config.width, World.config.height) mustEqual new Point(World.config.width, 1)
+      Line.pointCrossWithBorder(new Point(1, 1), new Point(-2, 0), World.config.width, World.config.height) mustEqual new Point(0, 1)
+      Line.pointCrossWithBorder(new Point(1, 1), new Point(0, 2), World.config.width, World.config.height) mustEqual new Point(1, World.config.height)
+      Line.pointCrossWithBorder(new Point(1, 1), new Point(0, -2), World.config.width, World.config.height) mustEqual new Point(1, 0)
+      Line.pointCrossWithBorder(new Point(1, 1), new Point(1, 1), World.config.width, World.config.height) mustEqual new Point(World.config.width, World.config.height)
+      Line.pointCrossWithBorder(new Point(1, 1), new Point(-1, -1), World.config.width, World.config.height) mustEqual new Point(0, 0)
+    }
 
     "Test tangient circle" in {
       val square = Line.tangentCircle(new Point(0,1), new Point(1,0), new Point(1,0), new Point(0,-1)).get.square()

@@ -1,11 +1,16 @@
 package com.agario.commands
 
+import com.agario.models.{BaseEntity, World}
 import com.agario.navigation.Track
 import com.agario.utils.Point
 
-class Split(point : Point, track : Option[Track]) extends Command(point, track) {
-  def this(point : Point) = this(point, Some(Track.empty()))
+class Split(entity : BaseEntity, track : Track, startTick : Int) extends Command(entity, track, startTick) {
+  def isFinished() : Boolean = {
+    startTick + track.duration() > World.tick
+  }
 }
-class Reject(point : Point, track : Option[Track]) extends Command(point, track) {
-  def this(point : Point) = this(point, Some(Track.empty()))
+class Eject(entity : BaseEntity, track : Track, startTick : Int) extends Command(entity, track, startTick) {
+  def isFinished() : Boolean = {
+    startTick + track.duration() > World.tick
+  }
 }

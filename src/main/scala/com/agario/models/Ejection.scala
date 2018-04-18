@@ -5,46 +5,40 @@ import com.agario.utils.{Circle, Point, Trajectory}
 
 
 class Ejection (
-               world: World,
                id: String,
                var posCircle : Circle,
                var speed : Point,
                var weight : Double,
                var pId : Int
-               ) extends BaseEntity(id, eType = BaseEntity.ejection, world) {
+               ) extends BaseEntity(id, eType = BaseEntity.ejection) {
+
+  var inertion : Double = BaseEntity.inertion(weight)
+  var maxSpeed : Double = BaseEntity.maxSpeed(weight)
+
+  override def copy(): BaseEntity = {
+    new Ejection(id, posCircle, speed, weight, pId)
+  }
+
   override def isStatic(): Boolean = false
 
-  override def factor(fragment: Fragment): (Map[Point, Double], Track) = {
+  override def factor(fragment: Fragment): Map[Point, Double] = {
 
-    val factor = if (pId == fragment.playerId) Ejection.ownEjectionFactor else Ejection.enemyEjectionFactor
-    val track = Trajectory.searchTrack(world, fragment, posCircle, Food.coverPart)
+    val factor = factorValue(fragment)
 
-    (Map(fragment.field.pointCell(posCircle.point) -> (factor) / (1 + track.duration())), track)
+    Map(fragment.field.pointCell(posCircle.point) -> (factor))
+  }
+
+  override def factorValue(fragment : Fragment) : Double = {
+    if (pId == fragment.playerId)
+      Ejection.ownEjectionFactor
+    else
+      Ejection.enemyEjectionFactor
   }
 
   override def fadingFactor(lastFactors : Map[Point, Double]): Map[Point, Double] = {
-
-    if (world.
-      fragments.
-      values.
-      filter(
-        f =>
-          f.posCircle.
-            isCover(posCircle, Ejection.covertPart)
-      ).size == 0
-    ) { //some one eat ejection, add ejection pos as visible
-      world.addVisibleCells(
-        world.
-          field.
-          getCircleCells(
-            posCircle.point,
-            world.lastVisiblePlayer.visionRadius
-          ).toSet
-      )
-    }
-
     Map.empty[Point, Double]
   }
+  override def canEat(fragment: Fragment): Boolean = true
 }
 
 

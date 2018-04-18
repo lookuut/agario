@@ -1,180 +1,133 @@
 package com.agario.utils
 
+import com.agario.Strategy
 import com.agario.models._
-import com.agario.navigation.{Step, Track}
+import com.agario.navigation.{BaseField, Step, Track}
 
-class Trajectory (private val world : World,
-                  private val fragment : BaseEntity,
-                  private val target : Circle,
-                  private val coverPart : Double) {
-
-
-  private val maxSpeed =  world.config.speedFactor / math.sqrt(fragment.weight)
-  private val factor = world.config.inertionFactor / fragment.weight
-  private var isPassedAngle = false
-
-  var minDistancePoint : Point = fragment.posCircle.point
-
-  /**
-    * Twist fragment to angle relatively speed
-    */
-  def twist(angle : Double) : (Int, Point, Track)  = {
-    if (fragment.speed.length() == 0) {
-      return (0, Point.zero(), new Track(world.tick))
-    }
-
-    if (fragment.posCircle.isCover(target, coverPart)) {
-      return (0, target.point, Track.empty())
-    }
-
-    val track = new Track(world.tick)
-    val (tick, p) = tracker(fragment.speed, angle, fragment.posCircle.point, 0, track)
-
-    (tick, p, track)
-  }
-
-  def straight (): Track = {
-    val track = new Track(world.tick)
-
-    if (fragment.posCircle.isCover(target, coverPart)) {
-      return Track.empty()
-    }
-
-    straightTracker(fragment.speed, fragment.posCircle.point, 0, track)
-    track
-  }
-
-  private def tracker(speed : Point,
-                      angle : Double,
-                      pos : Point,
-                      tick : Int,
-                      track : Track
-                     ) :  (Int, Point) = {
-    val targetPointVec = (target.point - pos).normalize()
-
-    val direction = {
-      if (isPassedAngle) {
-        targetPointVec
-      } else if (targetPointVec.angle(speed) > math.Pi / 100)
-        speed.turn(angle).normalize()
-      else
-        speed.normalize()
-    }
-
-    val newSpeed = tickSpeed(direction, speed)
-
-    val oldDirection = if (speed.angleAgainstClockWay(targetPointVec) > 0) 1 else -1
-    val newDirection = if (newSpeed.angleAgainstClockWay(targetPointVec) > 0) 1 else -1
-
-    if (oldDirection != newDirection) {
-      isPassedAngle = true
-    }
-
-    val newPos = pos + newSpeed
-
-    track.addStep(tick + 1, new Step(direction, newPos))
-
-    if (isPassedAngle) {
-      if (new Circle(newPos, fragment.posCircle.r).isCover(target, coverPart)) {
-        minDistancePoint = newPos
-        (tick + 1, minDistancePoint)
-      } else {
-        tracker(newSpeed, angle, newPos, tick + 1, track)
-      }
-    } else {
-      val normal = newSpeed.normal()
-      val speedVecNormalLine = Point.line(newPos + normal, newPos)
-      val directionPointSide = speedVecNormalLine.pointPos(newPos + direction)
-      val tangentCircle = Line.tangentCircle(pos, speed, newPos, newSpeed)
-
-      if (tick + 1 > Trajectory.tickLimit) {
-        (tick + 1, minDistancePoint)
-      } else if (new Circle(newPos, fragment.posCircle.r).isCover(target, coverPart)) {
-        minDistancePoint = newPos
-        (tick + 1, minDistancePoint)
-      } else if (speedVecNormalLine.pointPos(target.point) == directionPointSide
-        ||
-        (tangentCircle.isDefined && !tangentCircle.get.isCoverPoint(target.point))
-      ){
-        minDistancePoint = newPos
-        tracker(newSpeed, angle, newPos, tick + 1, track)
-      } else {
-        (tick + 1, minDistancePoint)
-      }
-    }
-  }
-
-  private def straightTracker(speed : Point,
-    pos : Point,
-    tick : Int,
-    track : Track
-  ) {
-    val targetPointVec = (target.point - pos).normalize()
-
-    val newSpeed = tickSpeed(targetPointVec, speed)
-    val newPos = pos + newSpeed
-
-    track.addStep(tick + 1, new Step(targetPointVec, newPos))
-
-    if (!new Circle(newPos, fragment.posCircle.r).isCover(target, coverPart) && tick <= Trajectory.tickLimit) {
-      straightTracker(newSpeed, newPos, tick + 1, track)
-    }
-  }
+class Trajectory (
+                   private val fragment : BaseEntity,
+                   private val target : Circle,
+                   private val coverPart : Double,
+                   private val field : BaseField
+                 ) {
 
   def tickSpeed (direction : Point, speed : Point): Point = {
-    val x = (direction.x * maxSpeed - speed.x) * factor + speed.x
-    val y = (direction.y * maxSpeed - speed.y) * factor + speed.y
-    new Point(x, y)
-  }
-
-  def getPassedAngle (): Boolean = {
-    isPassedAngle
+    Trajectory.tickSpeed(direction, speed, fragment.maxSpeed, fragment.inertion)
   }
 }
 
 
 object Trajectory {
-  private val iterationLimit = 100
-  private val tickLimit = 300
-  def searchTrack(world: World, fragment : BaseEntity, target : Circle, coverPart : Double): Track = {
+  val iterationLimit = 100
+  val tickLimit = 300
+  val straightTickLimit = 500
+  val searchLineTickLimit = 100
 
-    if (fragment.speed.length() == 0) {
-      return new Trajectory(world, fragment, target, coverPart).straight()
-    }
-    var lEdge = math.Pi
-    var angle = math.Pi / 4
-    var rEdge = 0.0
+  private val noCoverPenalty = 1.0
 
-    val targetDirection = (target.point - fragment.posCircle.point)
-
-    val angleSign = if (fragment.speed.angleAgainstClockWay(targetDirection) > 0) 1 else -1
-
-    (for (i <- 0 to iterationLimit) yield {
-      val trajectory = new Trajectory(world, fragment, target, coverPart)
-      val (tick, minDistancePoint, track) = trajectory.twist(angleSign * angle)
-
-      val isCover = new Circle(minDistancePoint, fragment.posCircle.r).isCover(target, coverPart)
-
-      if (!trajectory.getPassedAngle()) {//flight over
-        rEdge = angle
-      } else {
-        lEdge = angle
-      }
-      angle = (lEdge + rEdge) / 2
-
-      if (isCover)
-        (i, tick, track)
-      else
-        (i, tickLimit, new Track(world.tick))
-
-    }).
-      minBy(_._2)._3
+  def tickSpeed (direction : Point, speed : Point, maxSpeed : Double, inertion : Double): Point = {
+    new Point(
+      (direction.x * maxSpeed - speed.x) * inertion + speed.x,
+      (direction.y * maxSpeed - speed.y) * inertion + speed.y
+    )
   }
 
-  def simplePathToPoints(world : World, entity: BaseEntity, coverPart : Double, targets : Iterable[Circle]) : Map[Circle, Track] = {
-    targets.map {
-      case c =>
-        (c, new Trajectory(world, entity, c, coverPart).straight())
+  def speed(sSpeed : Point, dir : Point, maxSpeed : Double, inertia : Double, n : Int): Point = {
+
+    var k = 0.0
+    for (i <- 0 to n - 1) {
+      k += math.pow(1- inertia, i)
+    }
+
+    (sSpeed * math.pow(1- inertia, n)) + (dir * (maxSpeed * inertia * k))
+  }
+
+  def directionTrack(fragment: BaseEntity, dir : Point, field : BaseField, tickLimit : Int) : Track = {
+
+    val track = new Track(field)
+
+    var pos = fragment.posCircle.point
+    var speed = fragment.speed
+
+    for (step <- 0 to tickLimit) {
+      speed = tickSpeed(dir, speed, fragment.maxSpeed, fragment.inertion)
+      pos += speed
+      if (pos.x + fragment.posCircle.r > World.config.width ||
+        pos.y + fragment.posCircle.r > World.config.height ||
+        pos.x < fragment.posCircle.r ||
+        pos.y < + fragment.posCircle.r) {
+
+        return track
+      }
+
+      track.addStep(step + 1, new Step(dir, pos), getStepFactors(pos, step + 1, fragment, field))
+    }
+
+    track
+  }
+
+  def optimalTrack(fragment: BaseEntity, target : Circle, field : BaseField) : Track = {
+    val (tick, dir) = optimalDirection(fragment.speed, fragment.inertion, fragment.maxSpeed, target.point - fragment.posCircle.point)
+
+    val track = new Track(field)
+
+    var pos = fragment.posCircle.point
+    var speed = fragment.speed
+    for (step <- 0 to tick) {
+      speed = tickSpeed(dir, speed, fragment.maxSpeed, fragment.inertion)
+      pos += speed
+      track.addStep(step + 1, new Step(dir, pos), getStepFactors(pos, step + 1, fragment, field))
+    }
+
+    track
+  }
+
+  def optimalDirection(sSpeed : Point, inertia : Double, mSpeed : Double, target : Point) : (Int, Point) = {
+    val I = (1 - inertia)
+    val M = inertia * mSpeed
+
+    for (n <- 0 to 200) {
+
+      var sSpeedFactorSum = 0.0
+      for (i <- 1 to n) {
+        sSpeedFactorSum += math.pow(I, n)
+      }
+
+      val sSpeedFactor = sSpeed * sSpeedFactorSum
+
+      var mSpeedFactor = 0.0
+      for (i <- 1 to n) {
+        for (j <- 0 to i - 1) {
+          mSpeedFactor += math.pow(I, j)
+        }
+      }
+      mSpeedFactor = mSpeedFactor * M
+      if (mSpeedFactor > 0) {
+        val x = (target.x - sSpeedFactor.x) / mSpeedFactor
+        val y = (target.y - sSpeedFactor.y) / mSpeedFactor
+        val direction = new Point(x, y)
+
+        if (direction.length() <= 1) {
+          return (n, direction)
+        }
+      }
+    }
+
+    return (0, Point.zero)
+  }
+
+  def getStepFactors(pos : Point, tick : Int, fragment: BaseEntity, field: BaseField) : Map[Point, Double] = {
+    val cells = field.getCircleCells(pos, fragment.posCircle.r)
+    World.staticEntitiesField.getFactor(fragment, pos, tick + World.tick) ++ field.getFactors(cells)
+  }
+
+  def playerDangerField(entity: BaseEntity, coverPart : Double, targets : Iterable[Point], factor : Double): Map[Point, Double] = {
+
+    targets.map{
+      case cell =>
+        val pos = World.staticEntitiesField.cellToPoint(cell) - entity.posCircle.point
+        val tick = optimalDirection(entity.speed, entity.inertion, entity.maxSpeed, pos)._1
+        (cell, factor / tick)
     }.toMap
   }
 }

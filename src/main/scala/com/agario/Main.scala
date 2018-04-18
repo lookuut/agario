@@ -16,13 +16,15 @@ object Main {
 	var logger : SmartLogger = new SmartLogger()
 
 	val rand = new Random(123)
-	
+	val startMillis = System.currentTimeMillis()
+
 	def run() {
+
 		val configStr = input()
 		val config = JsonUtil.parseJson[Config](configStr)
-		val world = new World(config.right.get)
-		val strategy = new Strategy(world)
+		World.init(config.right.get)
 
+		val strategy = new Strategy()
 		logger.info(s"Get config file " + configStr)
 
 		try {
@@ -46,21 +48,19 @@ object Main {
 					)
 				}
 
-				val jsonResponse = JsonUtil.renderJson(new Response(response, f"Run time $mills ms"))
+				val jsonResponse = JsonUtil.renderJson(new Response(response, f"Run tick time $mills ms, run sum ${(System.currentTimeMillis() - startMillis) / 1000f} time in sec"))
 				logger.info(jsonResponse)
 				output(jsonResponse)
 			}
 
 		} catch {
-			case e: NumberFormatException =>
-
-			/*case e: Exception => {
-				println(e.getStackTrace.toString)
+			case e: Exception => {
+			//case e: NumberFormatException => {
 				val response = new Response(0,0, false, false, e.getStackTrace.mkString("\n"))
 				val jsonResponse = JsonUtil.renderJson(response)
 				logger.info(jsonResponse)
 				output(jsonResponse)
-			}*/
+			}
 		}
 	}
 

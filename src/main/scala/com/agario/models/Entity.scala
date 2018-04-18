@@ -25,45 +25,45 @@ class Entity(val id : Option[String],
     BaseEntity.getEntityId(this)
   }
 
-  def fragment(world: World) : Fragment = {
-    new Fragment(world, id.get, new Circle(point, r.get), weight.get, speed, ttf.getOrElse(0))//@todo, what should we do with radius
+  def fragment() : Fragment = {
+    new Fragment(id.get, new Circle(point, r.get), weight.get, speed, ttf.getOrElse(0))//@todo, what should we do with radius
   }
 
-  def virus(world: World) : Virus = {
-    new Virus(world, id.get, new Circle(point, world.config.virusRadius), Point.zero, weight.get)
+  def virus() : Virus = {
+    new Virus(id.get, new Circle(point, World.config.virusRadius), Point.zero, weight.get)
   }
 
-  def food(world: World) : Food = {
-    new Food(world, point.toString, new Circle(point, Food.radius), Point.zero, world.config.foodWeight)
+  def food() : Food = {
+    new Food(point.toString, new Circle(point, Food.radius), Point.zero, World.config.foodWeight)
   }
 
-  def player(world: World) : Player = {
-    val lastState = world.entityPrevStates.get(getId())
+  def player() : Player = {
+    val lastState = World.entityPrevStates.get(getId())
     val lastPos = if (lastState.isEmpty) point else lastState.get.posCircle.point
     val speed = Player.speedByLastPos(point, lastPos)
 
-    new Player(world, id.get, new Circle(point, r.get), speed, weight.get)
+    new Player(id.get, new Circle(point, r.get), speed, weight.get)
   }
 
-  def ejection(world: World) : Ejection = {
-    val lastState = world.entityPrevStates.get(getId())
+  def ejection() : Ejection = {
+    val lastState = World.entityPrevStates.get(getId())
     val lastPos = if (lastState.isEmpty) point else lastState.get.posCircle.point
     val speed = Player.speedByLastPos(point, lastPos)
 
-    new Ejection(world, id.get, new Circle(point, Ejection.radius), speed, Ejection.weight, pId.get)
+    new Ejection(id.get, new Circle(point, Ejection.radius), speed, Ejection.weight, pId.get)
   }
 
-  def getEntity(world: World): BaseEntity = {
+  def getEntity(): BaseEntity = {
     if (objectType.isEmpty) {
-      fragment(world)
+      fragment()
     } else if (objectType.get == BaseEntity.player) {
-      player(world)
+      player()
     } else if (objectType.get == BaseEntity.food) {
-      food(world)
+      food()
     } else if (objectType.get == BaseEntity.ejection) {
-      ejection(world)
+      ejection()
     } else if (objectType.get == BaseEntity.virus) {
-      virus(world)
+      virus()
     } else {
       throw new Exception("Unknown type " + objectType.get)
     }

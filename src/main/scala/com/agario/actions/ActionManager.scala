@@ -8,61 +8,39 @@ import com.agario.utils.{Point, Profiler}
 /**
   * @note action then navigation manager
   */
-class ActionManager(world: World) {
+class ActionManager() {
 
-  var action : Option[Action] = None
+  var action = new ActionMove()
 
-  def run (world : World) : Response = {
-    if (action.isEmpty || action.get.isEnd() || world.isWorldChanged) {
-      action = Some(newAction())
-    }
+  def run () : Response = {
 
-    val command = action.get.run()
+    val command = action.run()
 
     val point = navigation(command)
 
-    if (world.getPlayers().size == 0 &&
-          world.fragments.size < world.config.maxFragmentsCount &&
-          world.fragments.values.filter(f => f.weight >= Config.minWeightToBurst).size > 0) {
+    if (World.getPlayers().size == 0 &&
+          World.fragments.size < World.config.maxFragmentsCount &&
+          World.fragments.values.filter(f => f.weight >= Config.minWeightToBurst).size > 0) {
       return new Response(point.x, point.y, true, false)
     }
 
-    new Response(point.x, point.y, command.isInstanceOf[Split], command.isInstanceOf[Reject])
+    new Response(point.x, point.y, command.isInstanceOf[Split], command.isInstanceOf[Eject])
   }
 
 
   def navigation (command : Command): Point = {
 
-    val fragment = world.getMinDistanceFragment(command.point)
+    val fragment = World.getMinDistanceFragment(command.entity.posCircle.point)
 
     if (fragment.isEmpty) {
       throw new Exception("No fragments to navigate")
     }
 
-    if (command.isInstanceOf[Move] && command.track.isDefined) {
-      val step = command.track.get.getStep(world.tick + 1)
-      (step.direction * 100 + fragment.get.posCircle.point)
+    val step = command.track.getStep(World.tick - command.startTick + 1)
+    if (step.isDefined) {
+      (step.get.direction * 100 + fragment.get.posCircle.point)
     } else {
-      if (Fragment.positionTick(fragment.get, command.point, world.config)._1 >
-        Fragment.moveWithCorrectionTick(fragment.get, command.point, world.config)._1) {
-
-        val targetVec = (command.point - fragment.get.posCircle.point)
-        val direction = Fragment.getCorrectionDirect(fragment.get.speed, targetVec.normalize(),fragment.get.maxSpeed(world.config)).normalize()
-        direction * targetVec.length() + fragment.get.posCircle.point
-      } else {
-        command.point
-      }
+      (fragment.get.posCircle.point)
     }
-  }
-
-  def newAction(): Action = {
-
-    val virus = ActionVirusBurst.searchVirus(world.fragments, world)
-
-    if (virus.isDefined && world.getPlayers().size == 0 && world.fragments.head._2.weight > Config.minWeightToBurst) {
-      return new ActionVirusBurst(virus.get._2.id, virus.get._1.id, world)
-    }
-
-    return new ActionMove(world)
   }
 }

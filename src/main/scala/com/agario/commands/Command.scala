@@ -1,8 +1,9 @@
 package com.agario.commands
 
+import com.agario.models.BaseEntity
 import com.agario.navigation.Track
-import com.agario.utils.Point
 
-abstract class Command(val point : Point, val track : Option[Track]) {
-  def this(point : Point) = this(point, Some(Track.empty()))
+
+abstract class Command(val entity : BaseEntity, val track : Track, val startTick : Int) {
+  def isFinished() : Boolean
 }

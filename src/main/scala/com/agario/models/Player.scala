@@ -1,21 +1,35 @@
 package com.agario.models
 
-import com.agario.navigation.Track
+import com.agario.navigation.{BaseField, Track}
 import com.agario.utils.{Circle, Point, Trajectory}
 
 class Player (
-               world: World,
                id : String,
               var posCircle : Circle,
               var speed : Point,
               var weight : Double
-            ) extends BaseEntity(id, eType = BaseEntity.player, world)
+            ) extends BaseEntity(id, eType = BaseEntity.player)
 {
+
+  var inertion : Double = BaseEntity.inertion(weight)
+  var maxSpeed : Double = BaseEntity.maxSpeed(weight)
 
   val playerId = if (id.contains('.')) id.split('.').head.toInt else id.toInt
   val isSplited = id.contains('.')
   val visionRadius = Fragment.visionRadius(this, if (isSplited) 2 else 1)//@todo : get real player's fragments
 
+  var fragmentCell = World.staticEntitiesField.pointCell(posCircle.point)
+  var visibleCells = World.staticEntitiesField.getCircleCells(visionCenter(), visionRadius)
+
+  override def update(posCircle: Circle, speed: Point, weight: Double): BaseEntity = {
+    super.update(posCircle, speed, weight)
+
+    if (fragmentCell != World.staticEntitiesField.pointCell(posCircle.point)) {//fragment change pos, update visible cells
+      visibleCells = World.staticEntitiesField.getCircleCells(visionCenter(), visionRadius)
+      fragmentCell = World.staticEntitiesField.pointCell(posCircle.point)
+    }
+    this
+  }
   override def equals(that: Any): Boolean =
     that match {
       case that: Player => that.id == id
@@ -26,47 +40,52 @@ class Player (
     id.hashCode
   }
 
-  override def factor(fragment: Fragment): (Map[Point, Double], Track) = {
+  override def canEat(fragment: Fragment): Boolean = {
+    Player.factor(fragment, (World.fragments.size >= 2), this, isSplited) < 0
+  }
 
-    val factor = Player.factor(fragment, (world.fragments.size >= 2), this, isSplited)
+  override def copy(): BaseEntity = {
+    new Player(id, posCircle, speed, weight)
+  }
 
-    val track = if (factor < 0)
-                  Trajectory.searchTrack(world, fragment, posCircle, Player.coverPart)
-                else Track.empty
 
-    world.addVisibleCells(world.
+  override def factor(fragment: Fragment): Map[Point, Double] = {
+
+    val factor = Player.factor(fragment, (World.fragments.size >= 2), this, isSplited)
+
+    World.staticEntitiesField.setVisibleCells(fragment.
       field.
       getCircleCells(
         this.posCircle.point,
         this.visionRadius
-      ).toSet)
+      ))
 
     if (factor > 0) {
       val visionRadius = Fragment.visionRadius(this, 1) + Player.playerVisionRadiusDelta//@todo do it well , with player fragments count
       val visionCells = fragment.field.getCircleCells(posCircle.point, visionRadius)
-      val visionPoints = fragment.field.cellsCenterToPoints(visionCells)
-      val cellTracks = Trajectory.simplePathToPoints(
-        world,
-        this,
-        Player.coverPart,
-        visionPoints.map(p => new Circle(p, fragment.posCircle.r))
-      )
-      val interpolated = cellTracks.map{case (c, track) => (fragment.field.pointCell(c.point), (factor) / math.pow(track.duration() + 1, 2) ) }
-      (interpolated, track)
+
+      Trajectory.playerDangerField(this, Food.coverPart, visionCells, factor)
     } else if (factor < 0) {
-      val track = Trajectory.searchTrack(world, fragment, this.posCircle, Player.coverPart)
       val visionCells = fragment.field.getCircleCells(posCircle.point, fragment.visionRadius)
-      (fragment.field.interpolation(posCircle.point, Point.zero, factor, visionCells), track)
+      fragment.field.interpolation(posCircle.point, Point.zero, factor, visionCells)
     } else {
-      (Map.empty[Point, Double], Track.empty)
+      Map.empty[Point, Double]
     }
   }
+  override def factorValue(fragment : Fragment) : Double = {
+    Player.factor(fragment, (World.fragments.size >= 2), this, isSplited)
+  }
+
 
   override def fadingFactor(lastFactors : Map[Point, Double]): Map[Point, Double] = {
     lastFactors
   }
 
   override def isStatic(): Boolean = false
+
+  def visionCenter() : Point = {
+    posCircle.point + speed.normalize() * Fragment.movingFragmentVisionFactor
+  }
 }
 
 

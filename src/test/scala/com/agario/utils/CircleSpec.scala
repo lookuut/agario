@@ -1,7 +1,7 @@
 package com.agario.utils
 
 import com.agario.BaseSpec
-import com.agario.models.Player
+import com.agario.models.{Player, World}
 
 object CircleSpec extends BaseSpec {
   "Circle spec" should {
@@ -16,16 +16,15 @@ object CircleSpec extends BaseSpec {
     }
 
     "Circle can cover test" in {
-      val world = getWorld()
-      new Circle(new Point(10, 10), 10).canCover(new Circle(new Point(10, 1), 1), world) mustEqual true
-      new Circle(new Point(10, 10), 10).canCover(new Circle(new Point(1, 10), 1), world) mustEqual true
-      new Circle(new Point(10, 10), 10).canCover(new Circle(new Point(10, 10), 1), world) mustEqual true
-      new Circle(new Point(10, 10), 10).canCover(new Circle(new Point(5, 5), 1), world) mustEqual true
+      new Circle(new Point(10, 10), 10).canCover(new Circle(new Point(10, 1), 1)) mustEqual true
+      new Circle(new Point(10, 10), 10).canCover(new Circle(new Point(1, 10), 1)) mustEqual true
+      new Circle(new Point(10, 10), 10).canCover(new Circle(new Point(10, 10), 1)) mustEqual true
+      new Circle(new Point(10, 10), 10).canCover(new Circle(new Point(5, 5), 1)) mustEqual true
 
-      new Circle(new Point(10, 10), 10).canCover(new Circle(new Point(1,1), 1), world) mustEqual false
-      new Circle(new Point(100, 100), 10).canCover(new Circle(new Point(1, 1), 1), world) mustEqual false
-      new Circle(new Point(2, 2), 2).canCover(new Circle(new Point(1, 1), 1), world) mustEqual false
-      new Circle(new Point(3, 3), 3).canCover(new Circle(new Point(world.config.width - 1,  world.config.height - 1), 1), world) mustEqual false
+      new Circle(new Point(10, 10), 10).canCover(new Circle(new Point(1,1), 1)) mustEqual false
+      new Circle(new Point(100, 100), 10).canCover(new Circle(new Point(1, 1), 1)) mustEqual false
+      new Circle(new Point(2, 2), 2).canCover(new Circle(new Point(1, 1), 1)) mustEqual false
+      new Circle(new Point(3, 3), 3).canCover(new Circle(new Point(World.config.width - 1,  World.config.height - 1), 1)) mustEqual false
     }
 
     "Is track intersect1" in {

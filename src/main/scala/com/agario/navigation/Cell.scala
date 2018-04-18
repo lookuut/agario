@@ -4,7 +4,7 @@ import com.agario.models.World
 
 import scala.collection.mutable.{ArrayBuffer, HashMap}
 
-class Cell(val world : World) {
+class Cell {
 
   val history = HashMap.empty[Int, ArrayBuffer[Entity]]
   var maxTick = 0
@@ -27,7 +27,7 @@ class Cell(val world : World) {
   }
 
   def clear(): Unit = {
-    history --= history.keys.filter{tick => tick < world.tick - Cell.minTickCellHistory}
+    history --= history.keys.filter{tick => tick < World.tick - Cell.minTickCellHistory}
   }
 }
 

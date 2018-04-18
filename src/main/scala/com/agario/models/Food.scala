@@ -1,15 +1,16 @@
 package com.agario.models
 
-import com.agario.navigation.Track
-import com.agario.utils.{Circle, Point, Trajectory}
+import com.agario.utils.{Circle, Point}
 
 class Food (
-           world: World,
            id : String,
            var posCircle : Circle,
            var speed : Point,
            var weight : Double
-           ) extends BaseEntity(id, eType = BaseEntity.food, world) {
+           ) extends BaseEntity(id, eType = BaseEntity.food) {
+
+  var inertion : Double = BaseEntity.inertion(weight)
+  var maxSpeed : Double = BaseEntity.maxSpeed(weight)
 
   override def equals(that: Any): Boolean =
     that match {
@@ -26,36 +27,26 @@ class Food (
 
   override def isStatic(): Boolean = true
 
-  override def factor(fragment: Fragment): (Map[Point, Double], Track) = {
+  override def copy(): BaseEntity = {
+    new Food(id, posCircle, speed, weight)
+  }
 
-    val track = Trajectory.searchTrack(world, fragment, posCircle, Food.coverPart)
+  override def canEat(fragment: Fragment): Boolean = true
+  override def factor(fragment: Fragment): Map[Point, Double] = {
 
-    val factor = if (track.duration() == 0) Food.fadingFactor else ((Food.factor) / (track.duration() + 1))
+    val factor = Food.factor
 
-    (Map(fragment.field.pointCell(posCircle.point) -> factor), track)
+    Map(fragment.field.pointCell(posCircle.point) -> factor)
+  }
+
+  override def factorValue(fragment : Fragment) : Double = {
+    Food.factor
   }
 
   override def fadingFactor(lastFactors : Map[Point, Double]): Map[Point, Double] = {
-    if (world.
-      fragments.
-      values.
-      filter(
-        f =>
-          f.posCircle.
-            isCover(posCircle, Ejection.covertPart)
-      ).size == 0
-    ) { //some one eat ejection, add ejection pos as visible
-      world.addVisibleCells(
-        world.
-          field.
-          getCircleCells(
-            posCircle.point,
-            world.lastVisiblePlayer.visionRadius
-          ).toSet
-      )
-    }
-
-    Map.empty[Point, Double]  }
+    //lastFactors.map{case(p,f) => (p, math.abs(f))}
+    Map.empty[Point, Double]
+  }
 }
 
 

@@ -1,125 +1,249 @@
 package com.agario.models
 
 import com.agario.Config
-import com.agario.navigation.{BaseField, FadingField, FragmentField, WorldField}
-import com.agario.utils.{Circle, Point}
+import com.agario.navigation.{BaseField, EntitiesField, FadingField, WorldMap}
+import com.agario.utils.{Circle, Line, Point}
 
+import scala.collection.mutable
 import scala.collection.mutable.Set
 
-class World(val config : Config) {
+object World {
 
-  val chartWidth = (config.width / FragmentField.defaultPropose).floor.toInt
-  val chartHeight = (config.height / FragmentField.defaultPropose).floor.toInt
+  var chartWidth = 0
+  var chartHeight = 0
+  var edgesLines = Array[Line]()
+  var hiddenCellFactor = 0.0
 
-  val mapCenter = new Point(config.width / 2, config.height / 2)
+  var mapCenter = Point.zero
   var tick = 0
 
-  var entityPositions = scala.collection.immutable.Set[Point]()
+  var config : Config = null
+  val staticEntitiesTypes = scala.collection.immutable.Set(BaseEntity.food, BaseEntity.ejection)
+  val worldMapEntitiesTypes = scala.collection.immutable.Set(BaseEntity.food, BaseEntity.virus, BaseEntity.ejection)
+
+  def init (config : Config): Unit =  {
+    this.config = config
+    this.chartWidth = (config.width / BaseField.defaultPropose).floor.toInt
+    this.chartHeight = (config.height / BaseField.defaultPropose).floor.toInt
+    this.edgesLines = Array(new Line(1,0,0), new Line(0,1,0), new Line(1,0, -config.width), new Line(0,1, -config.height))
+    this.hiddenCellFactor = FadingField.getStartFadingFactor(BaseField.defaultPropose, chartWidth, chartHeight)
+
+    this.mapCenter = new Point(config.width / 2, config.height / 2)
+    this.simpleFragment = new Fragment(
+      "-1.1",
+      new Circle(
+        Point.zero,
+        Fragment.radiusByWeight(Fragment.startWeight)
+      ),
+      Fragment.startWeight,
+      Point.zero,
+      0
+    )
+    this.staticEntitiesField = new EntitiesField(staticEntitiesTypes)
+
+    this.lastVisiblePlayer =  new Player(
+      "-1",
+      new Circle(
+        new Point(50, 50),
+        Fragment.radiusByWeight(Player.playerStartWeight)
+      ),
+      Point.zero,
+      Player.playerStartWeight
+    )
+
+    entityPrevStates = Map.empty[String, BaseEntity]
+    fragments = Map.empty[String, Fragment]
+    entities = Map.empty[String, BaseEntity]
+    players =  Map.empty[String, Player]
+    foods = Map.empty[String, Food]
+
+    isWorldChanged = false
+
+    maxRadiusFragment = None
+    maxRadiusFragmentCount = 0
+
+    worldField = None
+    worldFieldUpdatedTick = -1
+
+    entitiesHistoryTimeline.clear()
+    entitiesHistory.clear()
+
+    tick = 0
+  }
+
+  var staticEntitiesField : EntitiesField = null
+
+  val entitiesHistoryTimeline = scala.collection.mutable.HashMap[String, Int]()
+  val entitiesHistory = scala.collection.mutable.HashMap[String, BaseEntity]()
+
   var entityPrevStates = Map.empty[String, BaseEntity]
   var fragments = Map.empty[String, Fragment]
   var entities = Map.empty[String, BaseEntity]
   var players =  Map.empty[String, Player]
+  var foods = Map.empty[String, Food]
 
-  val field = new WorldField(
-    this,
-    FragmentField.edgeFactor,
-    FadingField.
-      getStartFadingFactor(
-        FragmentField.defaultPropose,
-        chartWidth,
-        chartHeight)
-  )
-
-  val visibleCells = Set[Point]()
+  var simpleFragment : Fragment = null
+  var lastVisiblePlayer : Player = null
 
   var isWorldChanged = false
 
-  var lastVisiblePlayer = new Player(this,
-      "-1",
-      new Circle(
-        new Point(-1, 1),
-        Fragment.radiusByWeight(Player.playerStartWeight)
-      ),
-      Point.zero(),
-    Player.playerStartWeight
-  )
+  var maxRadiusFragment : Option[Fragment] = None
+  var maxRadiusFragmentCount = 0
+
+  var worldField : Option[BaseField] = None
+  var worldFieldUpdatedTick = -1
+  val newEntitiesType = mutable.Set[String]()
+  val newEntitiesIds = mutable.Set[String]()
+
+  def updateEntities(fEntities : Array[Entity],
+                     eEntities : Array[Entity]): Unit = {
+    val visibleCells = Set[Point]()
+
+    entityPrevStates = entities
+
+    fragments = fEntities.map{
+      case e =>
+        val fragment = if (fragments.contains(e.getId())) {
+            getFragment(e.getId()).
+              update(new Circle(e.point, e.r.get), e.speed, e.weight.get, e.ttf.getOrElse(0))
+          } else {
+            e.fragment()
+          }
+
+        visibleCells ++= fragment.visibleCells//@todo do it smart
+        fragment.fadeField()
+
+        (e.getId(), fragment)
+    }.toMap
+
+    entities = eEntities.map{
+      case e =>
+        val newEntity = e.getEntity()
+
+        if (newEntity.eType != BaseEntity.fragment) {
+          if (newEntity.eType == BaseEntity.food && !entitiesHistory.contains(newEntity.getId())) {
+            val pos1 = new Point(
+              e.point.x,
+              World.config.height - e.point.y
+            )
+            val eFood1 = new Entity(None, pos1.x, pos1.y, e.objectType, e.weight, e.r, None, None, None, None).getEntity()
+
+            staticEntitiesField.updateEntity(eFood1)
+            visibleCells.add(staticEntitiesField.pointCell(eFood1.posCircle.point))
+            entitiesHistory.put(eFood1.getId(), eFood1)
+            entitiesHistoryTimeline.put(eFood1.getId(), tick)
+
+            val pos2 = new Point(
+              World.config.width - e.point.x,
+              e.point.y
+            )
+            val eFood2 = new Entity(None, pos2.x, pos2.y, e.objectType, e.weight, e.r, None, None, None, None).getEntity()
+
+            staticEntitiesField.updateEntity(eFood2)
+            visibleCells.add(staticEntitiesField.pointCell(eFood2.posCircle.point))
+            entitiesHistory.put(eFood2.getId(), eFood2)
+            entitiesHistoryTimeline.put(eFood2.getId(), tick)
+
+            val pos3 = new Point(
+              World.config.width - e.point.y,
+              World.config.height - e.point.y
+            )
+
+            val eFood3 = new Entity(None, pos3.x, pos3.y, e.objectType, e.weight, e.r, None, None, None, None).getEntity()
+
+            staticEntitiesField.updateEntity(eFood3)
+            visibleCells.add(staticEntitiesField.pointCell(eFood3.posCircle.point))
+            entitiesHistory.put(eFood3.getId(), eFood3)
+            entitiesHistoryTimeline.put(eFood3.getId(), tick)
+          }
+
+          entitiesHistory.put(newEntity.getId(), newEntity)
+          staticEntitiesField.updateEntity(newEntity)
+          entitiesHistoryTimeline.put(newEntity.getId(), tick)
+        }
+
+        if (entities.contains(e.getId())) {
+          val entity = getEntity(e.getId()).get
+          entity.update(newEntity.posCircle, newEntity.speed, newEntity.weight)
+
+          fragments.values.foreach(f => f.updateEntity(entity))
+
+          (
+            e.getId(),
+            entity
+          )
+        } else {
+          isWorldChanged = true
+
+          newEntitiesType.add(newEntity.eType)
+          newEntitiesIds.add(newEntity.getId())
+
+          fragments.values.foreach(f => f.addEntity(newEntity))
+          (e.getId(), newEntity)
+        }
+    }.toMap
+
+    entityPrevStates.filter{
+      case(eId, entity) => !entities.contains(eId)
+    }.foreach{
+      case (eId, entity) =>
+        fragments.values.foreach(f => f.fadeEntity(entity))
+        isWorldChanged = true
+    }
+
+    players = entities.
+      filter{
+        case (id, e) => e.eType == BaseEntity.player
+      }.
+      map{
+        case (id, player)  =>
+          (id, player.asInstanceOf[Player])
+      }
+
+    entitiesHistory.retain{//must be visible but not visible, then remove
+      case (id,e) =>
+        val isEliminated = Fragment.isVisible(fragments.values, e) && !entities.contains(e.getId())
+
+        if (isEliminated) {
+          entitiesHistoryTimeline.remove(id)
+          staticEntitiesField.removeEntity(id)
+        }
+
+        !isEliminated
+    }
+
+    entitiesHistoryTimeline.retain{
+      case(eId, t) =>
+        if (t < (tick - EntitiesField.maxEntityHistory)) {
+          staticEntitiesField.removeEntity(eId)
+          entitiesHistory.remove(eId)
+        }
+
+        !(t < (tick - EntitiesField.maxEntityHistory))
+    }
+
+    staticEntitiesField.setVisibleCells(visibleCells.toSet, tick)
+  }
 
   def updateWorld (fEntities : Array[Entity],
                    eEntities : Array[Entity],
                    _tick : Int
                     ): Unit = {
+    isWorldChanged = false
 
-    visibleCells.clear()
-    entityPrevStates = entities
+    newEntitiesType.clear()
+    newEntitiesIds.clear()
 
-    fragments = fEntities.map{
-      case e =>
-        if (fragments.contains(e.getId())) {
-          val updatedFragment = getFragment(e.getId()).
-                                  update(new Circle(e.point, e.r.get), e.speed, e.weight.get, e.ttf.getOrElse(0))
-          (
-            e.getId(),
-            updatedFragment
-          )
-        } else {
-          (e.getId(), e.fragment(this))
-        }
-    }.toMap
-
-    entities = eEntities.map{
-      case e =>
-        val newEntity = e.getEntity(this)
-        if (entities.contains(e.getId())) {
-          val entity = entities.
-            get(e.getId()).
-            get
-
-          (
-            e.getId(),
-            if (entity.isInstanceOf[Fragment]) {
-              entity.asInstanceOf[Fragment].update(newEntity.posCircle, newEntity.speed, newEntity.weight, newEntity.asInstanceOf[Fragment].ttf)
-            } else {
-              entity.update(newEntity.posCircle, newEntity.speed, newEntity.weight)
-            }
-          )
-        } else {
-          (e.getId(), e.getEntity(this))
-        }
-    }.toMap
-
-    players = entities.
-      filter{case (id, e) => e.eType == BaseEntity.player}.
-      map{case (id, player)  => (id, player.asInstanceOf[Player])}
+    tick = _tick
+    updateEntities(fEntities, eEntities)
 
     lastVisiblePlayer = if (players.size > 0) players.values.head else lastVisiblePlayer
-
-    val fragment = fragments.values.head
-    val curEntityPositions = entities.values.map(e => fragment.field.pointCell(e.posCircle.point)).toSet
-
-    this.isWorldChanged = curEntityPositions != entityPositions
-    this.entityPositions = curEntityPositions
-    tick = _tick
-
     fragments.values.foreach{
       case f =>
-        if (isWorldChanged) {
-
-          f.updateMapEntities()
-        }
-
-        visibleCells ++= field.getCircleCells(f.visionCenter(), f.visionRadius)//@todo do it smarter
         f.fadeField()
     }
-
-    field.cellsPowerFading(visibleCells.toSet)
   }
 
-  def addVisibleCells(cells : scala.collection.immutable.Set[Point]) : Unit = {
-    visibleCells ++= cells
-  }
-
-  var maxRadiusFragment : Option[Fragment] = None
-  var maxRadiusFragmentCount = 0
 
   def getMaxRadius(): Double = {
     if (maxRadiusFragmentCount != fragments.size && fragments.size > 0) {
@@ -167,10 +291,41 @@ class World(val config : Config) {
     players.values.filter(e => e.playerId == playerId)
   }
 
-  def getFragmentFieldSum(): BaseField = {
-    fragments.
-      values.
-      map(t => t.getFieldsSum()).
-      reduce{(left, right) => left.sum(right)}.sum(field)
+  def getFieldsSum(): BaseField = {
+    if (worldFieldUpdatedTick == tick && worldField.isDefined) {
+      worldField.get
+    } else {
+      worldField = Some(
+        {
+          if (fragments.size > 0) {
+            World.staticEntitiesField.sum(fragments.
+              values.
+              map(t => t.getFieldsSum()).
+              reduce{(left, right) => left.sum(right)}, tick)
+          } else {
+            World.staticEntitiesField
+          }
+        }
+      )
+      worldField.get
+    }
+  }
+
+  def getNearestPointToEdge(point : Point): Point = {
+    val minAxis = math.min(point.x, point.y)
+
+    if (point.x + point.y <= config.width / 2) {
+      if (minAxis == point.x) {
+        return new Point(0, point.y)
+      } else {
+        return new Point(point.x, 0)
+      }
+    } else {
+      if (minAxis == point.x) {
+        return new Point(point.x, config.height)
+      } else {
+        return new Point(config.width, point.y)
+      }
+    }
   }
 }

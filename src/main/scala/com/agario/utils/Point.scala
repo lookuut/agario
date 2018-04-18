@@ -1,13 +1,16 @@
 package com.agario.utils
 
 class Point(val x: Double, val y : Double) {
+  lazy val magnitude = Math.sqrt(x * x + y * y)
 
   def cut(min : Point, max : Point): Point =  {
 
     new Point(math.min(max.x, math.max(min.x, x)), math.min(max.y, math.max(min.y, y)))
   }
 
-  def toInt() = new Point(x.floor.toInt, y.floor.toInt)
+  def toInt() = {
+    new Point(if (x < 0 ) x.ceil.toInt else x.floor.toInt, if (y < 0 ) y.ceil.toInt else y.floor.toInt)
+  }
 
   def squareDistance(that : Point) = (that.x - x) * (that.x - x) + (that.y - y) * (that.y - y)
 
@@ -15,13 +18,13 @@ class Point(val x: Double, val y : Double) {
 
   def normalize() = if (length() == 0) Point.zero else new Point(x / length, y / length)
 
-  def length() = Math.sqrt(x * x + y * y)
+  def length() = magnitude
 
   def invert () = this * -1
 
   def angle(that: Point): Double = {
 
-    val delta = (that.x * x + that.y * y) / Math.sqrt((x * x + y * y) * (that.x * that.x + that.y * that.y))
+    val delta = (that.x * x + that.y * y) / (length() * that.length())
 
     if (delta > 1.0) return 0.0
     if (delta < -1.0) return Math.PI
