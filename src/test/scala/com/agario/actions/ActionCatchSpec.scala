@@ -1,6 +1,6 @@
 package com.agario.actions
 
-import com.agario.commands.{Move, Split}
+import com.agario.commands.Move
 import com.agario.models.{Fragment, Player}
 import com.agario.utils.{Circle, Point}
 

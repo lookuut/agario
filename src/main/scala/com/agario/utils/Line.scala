@@ -33,8 +33,11 @@ class Line(val xc : Double, val yc : Double, val c : Double) {
 
 object Line {
 
-  def pointCrossWithBorder(point : Point, direction : Point, width : Double, height : Double) : Point = {
-    val endPoint = point + direction * width * 2
+  def pointCrossWithBorder(p : Point, direction : Point, width : Double, height : Double) : Point = {
+    var point = new Point(math.max(1, p.x), math.max(1, p.y))
+    point = new Point(math.min(width - 1, point.x), math.min(height - 1, point.y))
+
+    val endPoint = point + direction.normalize() * width * height
     val (line1, line2, line3, line4) =
     if (direction.x > 0 && direction.y > 0) {
       (new Point(0, height), new Point(width, height) ,new Point(width, 0), new Point(width, height))
@@ -50,6 +53,10 @@ object Line {
 
     val res1 = Line.intersect(point, endPoint, line1, line2)
     val res2 = Line.intersect(point, endPoint, line3, line4)
+
+    if (res1.isEmpty && res2.isEmpty) {
+      throw new Exception(f"pointCrossWithBorder $p $direction")
+    }
 
     if (res1.isDefined) {
       res1.get

@@ -51,11 +51,11 @@ object World {
       Player.playerStartWeight
     )
 
+    fragmentPrevStates = Map.empty[String, BaseEntity]
     entityPrevStates = Map.empty[String, BaseEntity]
-    fragments = Map.empty[String, Fragment]
-    entities = Map.empty[String, BaseEntity]
-    players =  Map.empty[String, Player]
-    foods = Map.empty[String, Food]
+    fragments.clear()
+    entities.clear()
+    players.clear()
 
     isWorldChanged = false
 
@@ -76,11 +76,13 @@ object World {
   val entitiesHistoryTimeline = scala.collection.mutable.HashMap[String, Int]()
   val entitiesHistory = scala.collection.mutable.HashMap[String, BaseEntity]()
 
-  var entityPrevStates = Map.empty[String, BaseEntity]
-  var fragments = Map.empty[String, Fragment]
-  var entities = Map.empty[String, BaseEntity]
-  var players =  Map.empty[String, Player]
-  var foods = Map.empty[String, Food]
+  var entityPrevStates = scala.collection.Map.empty[String, BaseEntity]
+  var fragmentPrevStates = scala.collection.Map.empty[String, BaseEntity]
+
+
+  val fragments = mutable.HashMap.empty[String, Fragment]
+  val entities = mutable.HashMap.empty[String, BaseEntity]
+  val players =  mutable.HashMap.empty[String, Player]
 
   var simpleFragment : Fragment = null
   var lastVisiblePlayer : Player = null
@@ -94,14 +96,21 @@ object World {
   var worldFieldUpdatedTick = -1
   val newEntitiesType = mutable.Set[String]()
   val newEntitiesIds = mutable.Set[String]()
+  var minFragmentWeight = 1000.0
+
 
   def updateEntities(fEntities : Array[Entity],
                      eEntities : Array[Entity]): Unit = {
     val visibleCells = Set[Point]()
 
-    entityPrevStates = entities
+    fragmentPrevStates ++= fragments
+    entityPrevStates ++= entities
+    val curEntitiesIds = mutable.Set[String]()
+    val curFragmentIds = mutable.Set[String]()
 
-    fragments = fEntities.map{
+    minFragmentWeight = 1000.0
+
+    fEntities.foreach {
       case e =>
         val fragment = if (fragments.contains(e.getId())) {
             getFragment(e.getId()).
@@ -109,14 +118,16 @@ object World {
           } else {
             e.fragment()
           }
+        minFragmentWeight = math.min(minFragmentWeight, fragment.weight)
 
         visibleCells ++= fragment.visibleCells//@todo do it smart
         fragment.fadeField()
+        fragments.put(e.getId(), fragment)
 
-        (e.getId(), fragment)
-    }.toMap
+        curFragmentIds.add(e.getId())
+    }
 
-    entities = eEntities.map{
+    eEntities.foreach{
       case e =>
         val newEntity = e.getEntity()
 
@@ -168,10 +179,8 @@ object World {
 
           fragments.values.foreach(f => f.updateEntity(entity))
 
-          (
-            e.getId(),
-            entity
-          )
+          entities.put(e.getId(), entity)
+
         } else {
           isWorldChanged = true
 
@@ -179,19 +188,28 @@ object World {
           newEntitiesIds.add(newEntity.getId())
 
           fragments.values.foreach(f => f.addEntity(newEntity))
-          (e.getId(), newEntity)
+          entities.put(e.getId(), newEntity)
         }
-    }.toMap
+        curEntitiesIds.add(e.getId())
+    }
 
     entityPrevStates.filter{
-      case(eId, entity) => !entities.contains(eId)
+      case(eId, entity) => !curEntitiesIds.contains(eId)
     }.foreach{
       case (eId, entity) =>
         fragments.values.foreach(f => f.fadeEntity(entity))
-        isWorldChanged = true
+        entities.remove(eId)
     }
 
-    players = entities.
+    fragmentPrevStates.filter{
+      case(eId, entity) => !curFragmentIds.contains(eId)
+    }.foreach{
+      case (eId, entity) =>
+        fragments.remove(eId)
+    }
+
+    players.clear()
+    players ++= entities.
       filter{
         case (id, e) => e.eType == BaseEntity.player
       }.
@@ -276,7 +294,7 @@ object World {
   }
 
   def getEntities(etype : String): Map[String, BaseEntity] = {
-    entities.filter{case(id, e) => e.eType == etype}
+    entities.filter{case(id, e) => e.eType == etype}.toMap
   }
 
   def getPlayers (): Iterable[Player] = {
@@ -298,10 +316,23 @@ object World {
       worldField = Some(
         {
           if (fragments.size > 0) {
-            World.staticEntitiesField.sum(fragments.
-              values.
-              map(t => t.getFieldsSum()).
-              reduce{(left, right) => left.sum(right)}, tick)
+            val smalls = fragments.values.filter(t => t.weight < 80)
+            val bigs = fragments.values.filter(t => t.weight >= 80)
+
+            var field : BaseField = null
+
+            if (smalls.size > 0) {
+              field = smalls.head.getFieldsSum()
+            }
+
+            if (bigs.size > 0) {
+              if (field != null)
+                field.sum(bigs.head.getFieldsSum())
+              else
+                field = bigs.head.getFieldsSum()
+            }
+
+            World.staticEntitiesField.sum(field, tick)
           } else {
             World.staticEntitiesField
           }

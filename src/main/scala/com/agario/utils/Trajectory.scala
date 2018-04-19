@@ -51,16 +51,18 @@ object Trajectory {
 
     for (step <- 0 to tickLimit) {
       speed = tickSpeed(dir, speed, fragment.maxSpeed, fragment.inertion)
-      pos += speed
-      if (pos.x + fragment.posCircle.r > World.config.width ||
-        pos.y + fragment.posCircle.r > World.config.height ||
-        pos.x < fragment.posCircle.r ||
-        pos.y < + fragment.posCircle.r) {
 
-        return track
+      if (pos.x + speed.x + fragment.posCircle.r > World.config.width || pos.x + speed.x < fragment.posCircle.r) {
+        speed = new Point(0, speed.y)
       }
 
-      track.addStep(step + 1, new Step(dir, pos), getStepFactors(pos, step + 1, fragment, field))
+      if (pos.y + speed.y + fragment.posCircle.r > World.config.height || pos.y + speed.y < + fragment.posCircle.r) {
+        speed = new Point(speed.x, 0)
+      }
+
+      pos += speed
+
+      track.addStep(step, new Step(dir, pos), getStepFactors(pos, step, fragment, field))
     }
 
     track
@@ -75,8 +77,17 @@ object Trajectory {
     var speed = fragment.speed
     for (step <- 0 to tick) {
       speed = tickSpeed(dir, speed, fragment.maxSpeed, fragment.inertion)
+
       pos += speed
-      track.addStep(step + 1, new Step(dir, pos), getStepFactors(pos, step + 1, fragment, field))
+
+      if (pos.x + fragment.posCircle.r > World.config.width ||
+        pos.y + fragment.posCircle.r > World.config.height ||
+        pos.x < fragment.posCircle.r ||
+        pos.y < + fragment.posCircle.r) {
+        return track
+      }
+
+      track.addStep(step, new Step(dir, pos), getStepFactors(pos, step, fragment, field))
     }
 
     track
@@ -86,7 +97,7 @@ object Trajectory {
     val I = (1 - inertia)
     val M = inertia * mSpeed
 
-    for (n <- 0 to 200) {
+    for (n <- 0 to 100) {
 
       var sSpeedFactorSum = 0.0
       for (i <- 1 to n) {
@@ -125,8 +136,8 @@ object Trajectory {
 
     targets.map{
       case cell =>
-        val pos = World.staticEntitiesField.cellToPoint(cell) - entity.posCircle.point
-        val tick = optimalDirection(entity.speed, entity.inertion, entity.maxSpeed, pos)._1
+        val pos = (World.staticEntitiesField.cellToPoint(cell) - entity.posCircle.point + entity.speed)
+        val tick = pos.length() / (entity.maxSpeed / 2)
         (cell, factor / tick)
     }.toMap
   }

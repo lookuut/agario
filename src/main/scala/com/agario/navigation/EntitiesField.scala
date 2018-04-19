@@ -119,7 +119,8 @@ class EntitiesField (entitiesType : Set[String], propose : Int = BaseField.defau
     val f = new BaseField(propose)
     f.chart ++= field.chart.map{
       case (p, f) =>
-        (p, f + cellFactor(p, tick))
+        val edgeFactor = if (p.x == 0 || p.y == 0 || p.x == width - 1 || p.y == height - 1) 100 else 0
+        (p, f + cellFactor(p, tick) + edgeFactor)
     }
     f
   }

@@ -1,6 +1,6 @@
 package com.agario.actions
 
-import com.agario.commands.{Command, Empty, Move, Split}
+import com.agario.commands.{Command, Empty, Move}
 import com.agario.models.{Fragment, Player, World}
 import com.agario.navigation.Track
 import com.agario.utils.Point

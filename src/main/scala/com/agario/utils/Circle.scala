@@ -55,6 +55,10 @@ class Circle(val point : Point, val r : Double) {
 
 object Circle {
 
+  def isCoverPoint(p1 : Point, r : Double, p : Point): Boolean = {
+    p1.distance(p) <= r
+  }
+
   def isHeatBorder (point : Point, r : Double): Boolean = {
     if (
       point.x + r >= World.config.width || point.y + r >= World.config.height

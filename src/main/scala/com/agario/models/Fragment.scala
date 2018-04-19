@@ -165,6 +165,9 @@ class Fragment(id : String,
         }
       }
 
+      field.apply(entityLastFactor.get(e.getId()).get, -1)
+      field.apply(playerFactorCells)
+
       entityLastFactor.put(e.getId(), playerFactorCells)
       entityAtFragmentCells.put(e.getId(), entityAtFragmentCell)
     }
@@ -307,12 +310,16 @@ class Fragment(id : String,
   var fieldSumTick = -1
 
   def getFieldsSum(): BaseField = {
-    if (fieldSumTick == World.tick && fieldSum.isDefined) {
-      fieldSum.get
-    } else {
-      fieldSum = Some(field.sum(fadingField))
-      fieldSum.get
-    }
+    val fieldSum_ =
+      if (fieldSumTick == World.tick && fieldSum.isDefined) {
+        fieldSum.get
+      } else {
+        fieldSum = Some(field.sum(fadingField))
+        fieldSum.get
+      }
+    fieldSumTick = World.tick
+
+    fieldSum_
   }
 
   def visionCenter() : Point = {
@@ -328,6 +335,10 @@ class Fragment(id : String,
         &&
       World.fragments.size < World.config.maxFragmentsCount
     )
+  }
+
+  def canSplit(): Boolean = {
+    weight >= Fragment.minWeightToSplit && World.fragments.size < World.config.maxFragmentsCount
   }
 }
 

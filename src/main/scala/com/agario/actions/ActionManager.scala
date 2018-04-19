@@ -1,9 +1,7 @@
 package com.agario.actions
 
-import com.agario.Config
-import com.agario.commands._
-import com.agario.models.{Fragment, Response, World}
-import com.agario.utils.{Point, Profiler}
+import com.agario.models.{Response, World}
+import com.agario.utils.{Line}
 
 /**
   * @note action then navigation manager
@@ -16,31 +14,23 @@ class ActionManager() {
 
     val command = action.run()
 
-    val point = navigation(command)
+    var (pos, dir, isSplit) = command.run()
 
-    if (World.getPlayers().size == 0 &&
-          World.fragments.size < World.config.maxFragmentsCount &&
-          World.fragments.values.filter(f => f.weight >= Config.minWeightToBurst).size > 0) {
-      return new Response(point.x, point.y, true, false)
+    val point =
+      if (!(dir.x == 0 && dir.y == 0))
+        Line.pointCrossWithBorder(pos, dir, World.config.width, World.config.height)
+      else
+        pos
+
+    if (World.tick % 40 == 0) {
+      val minWeight = World.fragments.values.map(f => f.weight).min
+      val dangerPlayers = World.players.values.filter(p => p.weight >= minWeight / (2 * 1.2) )
+      if (dangerPlayers.size == 0 && World.fragments.values.filter(_.canSplit()).size > 0) {
+         isSplit = true
+      }
     }
 
-    new Response(point.x, point.y, command.isInstanceOf[Split], command.isInstanceOf[Eject])
+    new Response(point.x, point.y, isSplit, false)
   }
 
-
-  def navigation (command : Command): Point = {
-
-    val fragment = World.getMinDistanceFragment(command.entity.posCircle.point)
-
-    if (fragment.isEmpty) {
-      throw new Exception("No fragments to navigate")
-    }
-
-    val step = command.track.getStep(World.tick - command.startTick + 1)
-    if (step.isDefined) {
-      (step.get.direction * 100 + fragment.get.posCircle.point)
-    } else {
-      (fragment.get.posCircle.point)
-    }
-  }
 }

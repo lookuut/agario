@@ -2,7 +2,7 @@ package com.agario.actions
 
 import com.agario.Strategy
 import com.agario.commands._
-import com.agario.models._
+import com.agario.models.{World, _}
 import com.agario.navigation.{BaseField, Track}
 import com.agario.utils._
 
@@ -23,28 +23,45 @@ class ActionMove extends Action {
   def newCommand(searchFood : Boolean = false): Command = {
     val summaryField = World.getFieldsSum()
 
-    val entities = World.entities.values.
-      map{
-        case e =>
+    val dangerFragment = World.fragments.values.
+      filter(f => summaryField.getFactors(Set(f.fragmentCell)).get(f.fragmentCell).get > 0)
+    if (dangerFragment.size > 0){
+      command = new Escape(dangerFragment.head, if (World.players.values.size > 0) World.players.values.head else World.fragments.values.head , Track.empty, World.tick)
+      return command
+    }
 
-          val sum = World.fragments.values.map{
-            case f =>
-              val distance = e.posCircle.point.distance(f.posCircle.point)
-              val predictions = Strategy.getPrediction(f.weight, Strategy.getPosId(f.posCircle.point, f.speed), f.speed)
-              val tick =
-                if (predictions.length == 0)
-                  Strategy.getPredictionMinTick(f.speed, predictions)._1
-                else
-                  math.ceil(if (f.speed.length() > 0) distance / f.speed.length() else distance / (f.maxSpeed / 2)).toInt
+    val entities =
+      if (World.fragments.size >= 2 || World.fragments.size == 0 || World.entities.size == 0)
+        World.players.values
+      else {
+        World.entities.values.
+          map{
+            case e =>
+              val sum = World.fragments.values.map{
+                case f =>
+                  val distance = e.posCircle.point.distance(f.posCircle.point)
+                  val predictions = Strategy.getPrediction(f.weight, Strategy.getPosId(f.posCircle.point, f.speed), f.speed)
+                  val tick =
+                    if (predictions.length == 0)
+                      Strategy.getPredictionMinTick(f.speed, predictions)._1
+                    else
+                      math.ceil(if (f.speed.length() > 0) distance / f.speed.length() else distance / (f.maxSpeed / 2)).toInt
 
-              (e.factorValue(f), tick)
-          }.reduce(reduceTuple)
+                  (e.factorValue(f), tick)
+              }.reduce(reduceTuple)
 
-          (e, sum._1 / World.fragments.size , sum._2 / World.fragments.size)
-      }.
-      toSeq.sortBy(t => (t._3, t._2)).take(5).map(_._1)
+              (e, sum._1 / World.fragments.size , sum._2 / World.fragments.size)
+          }.
+          toSeq.sortBy(t => (t._3, t._2)).take(5).map(_._1)
+      }
 
-    command = searchPath(World.fragments.values, entities, summaryField, World.tick)
+    if (entities.size == 0) {
+      val track = ActionMove.searchLines(World.fragments.values, summaryField)
+      command = new Move(World.fragments.values.head, World.fragments.values.head, track, World.tick)
+    } else {
+      command = searchPath(World.fragments.values, entities, summaryField, World.tick)
+    }
+
     command
   }
 
@@ -53,13 +70,15 @@ class ActionMove extends Action {
       return newCommand()
     }
 
-    if (World.isWorldChanged) {
+    if (command.isInstanceOf[Escape] && !command.isFinished()) {
+      return command
+    } else if (World.isWorldChanged) {
       if (World.newEntitiesType.contains(BaseEntity.player)) {
           return newCommand()
       }
 
-      if (World.newEntitiesType.contains(BaseEntity.food)) {
-        if (command.isInstanceOf[Empty] || command.isInstanceOf[Move]) {
+      if (World.newEntitiesType.contains(BaseEntity.food) && World.fragments.size < 2) {
+        if (command.isInstanceOf[Empty] || command.isInstanceOf[Move] || command.isInstanceOf[EatFood]) {
           return newCommand(true)
         }
       }
@@ -79,49 +98,31 @@ class ActionMove extends Action {
         val entityFragments = entities.filter(e => e.canEat(fragment)).map {
           case entity =>
             val track = Trajectory.optimalTrack(fragment, entity.posCircle, field)
-            
-            //move all fragments to destination point
-            val updatedFragments = fragments.map {
-              case f =>
-                val cF = f.copy()
-                val destination = f.destination(track)
-                val w = if (f == fragment) entity.weight else 0.0
-
-                cF.update(new Circle(destination._1, f.posCircle.r), destination._2, f.weight + w)
-            }
-            field.set(Map(field.pointCell(entity.posCircle.point) -> 0))
 
             val command = {
               if (entity.isInstanceOf[Food]) {
-                val lineTrack = ActionMove.searchLines(updatedFragments, field)
-                track.append(lineTrack)
-
-                new EatFood(entity, track, World.tick)
+                new EatFood(fragment, entity, track, World.tick)
               } else if (entity.isInstanceOf[Player]) {
-                new Catch(entity, track, World.tick)
+                new Catch(fragment, entity, track, World.tick)
               } else if (entity.isInstanceOf[Virus]) {
-                new Burst(entity, track, World.tick)
+                new Burst(fragment, entity, track, World.tick)
               } else if (entity.isInstanceOf[Ejection]) {
-                new Catch(entity, track, World.tick)
+                new Catch(fragment, entity, track, World.tick)
               } else {
-                new Empty(entity, track, World.tick)
+                new Empty(fragment, entity, track, World.tick)
               }
             }
 
-            ((track.trackFactor) / (track.duration() + 1), track, command)
-        }
+            ((track.trackFactor) / (track.duration()), track, command)
+        }.filter(t => t._2.duration() > 0 && t._1 < 0)
 
-        val track = ActionMove.searchLines(fragments, field)
-        val lineTrackFactor = track.trackFactor / (track.duration() + 1)
         if (entityFragments.size == 0) {
-          (lineTrackFactor, track, new Move(fragment, track, World.tick))
+          val track = ActionMove.searchLines(fragments, field)
+          val lineTrackFactor = track.trackFactor / (track.duration())
+          (lineTrackFactor, track, new Move(fragment, fragment, track, World.tick))
         } else {
           val minTrack = entityFragments.minBy(_._1)
-          if (minTrack._1 < lineTrackFactor) {
-            minTrack
-          } else {
-            (lineTrackFactor, track, new Move(fragment, track, World.tick))
-          }
+          minTrack
         }
     }
 
@@ -145,15 +146,16 @@ object ActionMove {
 
 
   def searchLines(fragments : Iterable[BaseEntity], field : BaseField): Track = {
+
     val optimalTrack = fragments.flatMap {
       case fragment =>
         ActionMove.sectors.map {
           case direction =>
-            val track = Trajectory.directionTrack(fragment, direction, field, 200)
+            val track = Trajectory.directionTrack(fragment, direction, field, 80)
 
             (direction, track.duration(), track)
         }
-    }.
+    }.filter(_._3.duration() > 0).
       groupBy(_._1).
       map{
         case (dir, factors) =>
