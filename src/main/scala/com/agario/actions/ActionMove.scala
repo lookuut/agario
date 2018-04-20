@@ -1,16 +1,11 @@
 package com.agario.actions
 
-import com.agario.Strategy
 import com.agario.commands._
 import com.agario.models.{World, _}
 import com.agario.navigation.{BaseField, Track}
 import com.agario.utils._
 
 case class TrackDuration(val cells : Set[Point], val duration: Int)
-
-/**
-  * @todo search minimal track on graph
-  */
 
 class ActionMove extends Action {
 
@@ -40,12 +35,7 @@ class ActionMove extends Action {
               val sum = World.fragments.values.map{
                 case f =>
                   val distance = e.posCircle.point.distance(f.posCircle.point)
-                  val predictions = Strategy.getPrediction(f.weight, Strategy.getPosId(f.posCircle.point, f.speed), f.speed)
-                  val tick =
-                    if (predictions.length == 0)
-                      Strategy.getPredictionMinTick(f.speed, predictions)._1
-                    else
-                      math.ceil(if (f.speed.length() > 0) distance / f.speed.length() else distance / (f.maxSpeed / 2)).toInt
+                  val tick = math.ceil(if (f.speed.length() > 0) distance / f.speed.length() else distance / (f.maxSpeed / 2)).toInt
 
                   (e.factorValue(f), tick)
               }.reduce(reduceTuple)
@@ -141,7 +131,7 @@ object ActionMove {
   val sectors = (0 to sectorsCount).map{
     case sector =>
       val angle = sector.toDouble * 2f * math.Pi / sectorsCount
-      Strategy.xDir.turn(angle)
+      direction.turn(angle)
   }
 
 

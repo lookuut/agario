@@ -11,7 +11,6 @@ class ActionMoveSpec extends BaseSpec{
   "Action move test" should {
 
     "Goto in empty map" in new world  {
-      Strategy.preload(World.config)
       val weight = 40
 
       val fragmentPos = new Point(400, 360)

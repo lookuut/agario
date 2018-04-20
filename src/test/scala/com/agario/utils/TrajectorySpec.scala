@@ -33,29 +33,5 @@ class TrajectorySpec extends BaseSpec {
 
       1 > 2 mustEqual false
     }
-
-
-    "Prediction test position and speed test" in new world {
-
-      val weight = 40.0
-      val direction = new Point(-1, 0)
-      val startSpeed = new Point(-2, 1)
-      var speed = startSpeed
-      val maxSpeed = BaseEntity.maxSpeed(weight)
-      val inertia = BaseEntity.inertion(weight)
-      val maxTick = 49
-      var pos = Point.zero
-
-      var res = true
-      for (tick <- 0 to maxTick) {
-        speed = Trajectory.tickSpeed(direction, speed, maxSpeed, inertia)
-        pos += speed
-        val predictedPos = Strategy.getPosAtTick(weight, tick + 1, startSpeed, direction)
-        println(predictedPos + " " + pos + "=" + pos.distance(predictedPos.get))
-        res = res && pos.distance(predictedPos.get) <= 0.00001
-      }
-
-      res mustEqual true
-    }
   }
 }
