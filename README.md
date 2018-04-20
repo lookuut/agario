@@ -5,7 +5,7 @@
 не управляемые выбросы или взрываясь на вирусах, двигаясь в инерционной системе с сопротивлением
 изменение скорости задавался формулой:
 </p>
-&nbsp;&nbsp;&nbsp;&nbsp;speed_x += (nx * max_speed - speed_x) * INERTION_FACTOR / mass;
+&nbsp;&nbsp;&nbsp;&nbsp;speed_x += (nx * max_speed - speed_x) * INERTION_FACTOR / mass; <br/>
 &nbsp;&nbsp;&nbsp;&nbsp;speed_y += (ny * max_speed - speed_y) * INERTION_FACTOR / mass;
 
 <p>&nbsp;&nbsp;&nbsp;&nbsp; В первые дни быстренько написал стратегию с поиском оптимального пути для поедания еды и конкурентов без учета физики мира, 
@@ -21,17 +21,17 @@
 и только в конце конкурса, я понял что допустил роковую ошибку не раскрутив до конца формулу скорости.
 Из формулы изменения скорости легко вывести формулу скорости для любого на перед заданного времени:</p>
 
-&nbsp;&nbsp;&nbsp;&nbsp; S(t) = S0 * pow(1 - t, t) + P * Vm (1 - I) SUM(i <- 0 to t) pow(1 - I, i)
-&nbsp;&nbsp;&nbsp;&nbsp; где S(0) - стартовая скорость
-&nbsp;&nbsp;&nbsp;&nbsp; t - время
-&nbsp;&nbsp;&nbsp;&nbsp; I - инерция
-&nbsp;&nbsp;&nbsp;&nbsp; Vm - максимальная скорость объекта 
-&nbsp;&nbsp;&nbsp;&nbsp; P - единичный вектор направление импульса
+S(t) = S0 * pow(1 - t, t) + P * Vm (1 - I) SUM(i <- 0 to t) pow(1 - I, i) <br/>
+где S(0) - стартовая скорость <br/>
+t - время <br/>
+I - инерция <br/>
+Vm - максимальная скорость объекта  <br/>
+P - единичный вектор направление импульса <br/>
 
 <p>&nbsp;&nbsp;&nbsp;&nbsp; Допустим мы хотим узнать направления импульса чтобы попасть в точку X, относительно стартовой координаты объекта
 &nbsp;&nbsp;&nbsp;&nbsp; => SUM (i <- to n) S(i) = X <br/>
-&nbsp;&nbsp;&nbsp;&nbsp; => P = (X - SUM(i <- 0 to t) pow(1 - I, i)) / 
-&nbsp;&nbsp;&nbsp;&nbsp; <br/>&nbsp;&nbsp;&nbsp;&nbsp;(Vm * I * SUM(i <- 1 to t) (SUM(j <- 0 to i)pow(1 - I, j))
+&nbsp;&nbsp;&nbsp;&nbsp; => P = (X - SUM(i <- 0 to t) pow(1 - I, i)) /  <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(Vm * I * SUM(i <- 1 to t) {SUM(j <- 0 to i) pow(1 - I, j)}
 <br/>               
 &nbsp;&nbsp;&nbsp;&nbsp; Конечно, же формула не дает оптимальную траекторию, но все же гораздо лучше чем все время направленный на цель импульс
 Но додумался я слишком поздно, только за три часа до закрытия засабмитил стратежку, как итог 122 место, что считаю провалом, но провалом очень поучительным :)
