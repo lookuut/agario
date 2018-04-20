@@ -1,6 +1,6 @@
 # agario
 
-Разработка стратегии в игре Agar IO, в рамках конкурса <a href="https://github.com/MailRuChamps/miniaicups/blob/master/agario/RULES.md">aicups.ru</>
+Разработка стратегии в игре Agar IO, в рамках конкурса <a href="https://github.com/MailRuChamps/miniaicups/blob/master/agario/RULES.md">aicups.ru</a>
 Суть игры - набрать наибольшее количество очков поедая конкурентов, статичную еду, 
 не управляемые выбросы или взрываясь на вирусах, двигаясь в инерционной системе с сопротивлением
 изменение скорости задавался формулой:
