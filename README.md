@@ -1,3 +1,8 @@
+<style>
+   p {
+    text-indent: 20px;
+   }
+  </style>
 # agario
 
 <p>Разработка стратегии в игре Agar IO, в рамках конкурса <a href="https://github.com/MailRuChamps/miniaicups/blob/master/agario/RULES.md">aicups.ru</a>
